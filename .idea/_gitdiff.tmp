@@ -1,0 +1,43 @@
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	new file:   .eslintrc.json
+	modified:   .gitignore
+	new file:   .prettierrc
+	modified:   README.md
+	new file:   index.html
+	new file:   package-lock.json
+	new file:   package.json
+	new file:   public/vite.svg
+	new file:   schema.sql
+	new file:   src/App.css
+	new file:   src/App.tsx
+	new file:   src/Auth.tsx
+	new file:   src/assets/react.svg
+	new file:   src/index.css
+	new file:   src/main.tsx
+	new file:   src/supabaseClient.ts
+	new file:   src/types/database.types.ts
+	new file:   src/types/env.d.ts
+	new file:   tsconfig.json
+	new file:   tsconfig.node.json
+	new file:   vite.config.ts
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.DS_Store
+	.cursorrules
+	.editorconfig
+	.env.example
+	.idea/
+	.markdownlint.yaml
+	AutoCRM.code-workspace
+	README 2.md
+	db/
+	eslint.config.js
+	proj_docs/
+
+
+Changes in files:
