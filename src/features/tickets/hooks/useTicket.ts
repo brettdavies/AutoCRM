@@ -7,6 +7,7 @@ import type {
   TicketWithRelations
 } from '@/features/tickets/types/ticket.types';
 import { useEffect } from 'react';
+import logger from '@/shared/utils/logger.utils';
 
 export function useTicket(ticketId?: string) {
   const queryClient = useQueryClient();
@@ -19,28 +20,87 @@ export function useTicket(ticketId?: string) {
   } = useQuery<TicketWithRelations | null>({
     queryKey: ['ticket', ticketId],
     queryFn: async () => {
-      console.log('useTicket: Fetching ticket with ID:', ticketId);
+      logger.debug('[useTicket] Fetching ticket', { ticketId });
       if (!ticketId) return null;
-      const result = await TicketService.getTicket(ticketId);
-      console.log('useTicket: Received ticket data:', result);
-      return result;
+      
+      try {
+        const result = await TicketService.getTicket(ticketId);
+        logger.debug('[useTicket] Received ticket data', { 
+          ticketId,
+          status: result.status,
+          teamId: result.team?.id,
+          agentId: result.assigned_agent?.id
+        });
+        return result;
+      } catch (error) {
+        logger.error('[useTicket] Failed to fetch ticket', { ticketId, error });
+        throw error;
+      }
     },
     enabled: !!ticketId
   });
 
   // Create ticket mutation
   const createTicket = useMutation({
-    mutationFn: (dto: CreateTicketDTO) => TicketService.createTicket(dto),
+    mutationFn: async (dto: CreateTicketDTO) => {
+      logger.info('[useTicket] Creating new ticket', { 
+        title: dto.title,
+        teamId: dto.team_id,
+        categoryCount: dto.category_ids.length,
+        hasAttachments: dto.attachments?.length > 0
+      });
+
+      try {
+        const newTicket = await TicketService.createTicket(dto);
+        logger.info('[useTicket] Ticket created successfully', {
+          ticketId: newTicket.id,
+          status: newTicket.status,
+          teamId: newTicket.team?.id
+        });
+        return newTicket;
+      } catch (error) {
+        logger.error('[useTicket] Failed to create ticket', { 
+          title: dto.title,
+          error 
+        });
+        throw error;
+      }
+    },
     onSuccess: (newTicket) => {
+      logger.debug('[useTicket] Updating cache with new ticket', { 
+        ticketId: newTicket.id 
+      });
       queryClient.setQueryData(['ticket', newTicket.id], newTicket);
     }
   });
 
   // Update ticket mutation
   const updateTicket = useMutation({
-    mutationFn: (params: { id: string; dto: UpdateTicketDTO }) =>
-      TicketService.updateTicket(params.id, params.dto),
+    mutationFn: async (params: { id: string; dto: UpdateTicketDTO }) => {
+      logger.info('[useTicket] Updating ticket', { 
+        ticketId: params.id,
+        updates: params.dto
+      });
+
+      try {
+        const updatedTicket = await TicketService.updateTicket(params.id, params.dto);
+        logger.info('[useTicket] Ticket updated successfully', {
+          ticketId: updatedTicket.id,
+          status: updatedTicket.status
+        });
+        return updatedTicket;
+      } catch (error) {
+        logger.error('[useTicket] Failed to update ticket', { 
+          ticketId: params.id,
+          error 
+        });
+        throw error;
+      }
+    },
     onSuccess: (updatedTicket) => {
+      logger.debug('[useTicket] Updating cache with updated ticket', { 
+        ticketId: updatedTicket.id 
+      });
       queryClient.setQueryData(['ticket', updatedTicket.id], updatedTicket);
     }
   });
@@ -109,7 +169,7 @@ export function useTicket(ticketId?: string) {
     ticket,
     isLoading,
     error,
-    createTicket: createTicket.mutate,
+    createTicket: createTicket.mutateAsync,
     updateTicket: updateTicket.mutate,
     assignTicket: assignTicket.mutate,
     updateStatus: updateStatus.mutate,

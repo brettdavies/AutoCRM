@@ -10,6 +10,7 @@ import type {
   TicketRealtimePayload
 } from '@/features/tickets/types/ticket.types';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import logger from '@/shared/utils/logger.utils';
 
 export class TicketService {
   private static readonly TICKET_SELECT = `
@@ -85,6 +86,14 @@ export class TicketService {
   }): Promise<TicketWithRelations[]> {
     const { teamId, agentId, status, userId, userTeamId } = options;
 
+    logger.debug('[TicketService] Getting tickets with options:', {
+      teamId,
+      agentId,
+      status,
+      userId,
+      userTeamId
+    });
+
     let query = supabase
       .from('tickets')
       .select(this.TICKET_SELECT);
@@ -93,7 +102,14 @@ export class TicketService {
     const { data: { user } } = await supabase.auth.getUser();
     const userRole = user?.user_metadata?.role;
 
+    logger.debug('[TicketService] User context:', {
+      userRole,
+      userId,
+      userTeamId
+    });
+
     if (userRole === 'admin') {
+      logger.debug('[TicketService] Applying admin filters');
       // Admins can see all tickets, just apply optional filters
       if (teamId) {
         query = query.eq('assigned_team_id', teamId);
@@ -102,11 +118,30 @@ export class TicketService {
         query = query.eq('assigned_agent_id', agentId);
       }
     } else if (userRole === 'agent') {
-      // Agents can see tickets they're assigned to or in their team
-      query = query.or(
-        `assigned_agent_id.eq.${userId},assigned_team_id.eq.${userTeamId}`
-      );
+      logger.debug('[TicketService] Applying agent filters');
+      
+      if (agentId) {
+        // If agentId is provided, only show tickets assigned to that agent
+        logger.debug('[TicketService] Filtering for specific agent:', agentId);
+        query = query.eq('assigned_agent_id', agentId);
+      } else if (status === 'unassigned') {
+        // For unassigned tickets panel, only show unassigned tickets for their team
+        logger.debug('[TicketService] Filtering for unassigned team tickets');
+        query = query
+          .is('assigned_agent_id', null)
+          .eq('assigned_team_id', userTeamId);
+      } else {
+        // For other cases, show all accessible tickets
+        const filters = [
+          `assigned_agent_id.eq.${userId}`,
+          `assigned_team_id.eq.${userTeamId}`
+        ];
+        const filterString = filters.join(',');
+        logger.debug('[TicketService] Agent filter string:', filterString);
+        query = query.or(filterString);
+      }
     } else {
+      logger.debug('[TicketService] Applying regular user filters');
       // Regular users can only see tickets they created
       query = query.eq('created_by', userId)
                   .order('created_at', { ascending: false });
@@ -114,16 +149,47 @@ export class TicketService {
 
     // Apply status filter if provided
     if (status) {
-      query = query.eq('status', status);
+      logger.debug('[TicketService] Applying status filter:', status);
+      if (status === 'unassigned') {
+        query = query.is('assigned_agent_id', null);
+      } else {
+        query = query.eq('status', status);
+      }
     }
 
     const { data: ticketsData, error: ticketsError } = await query;
-    if (ticketsError) throw ticketsError;
+    
+    if (ticketsError) {
+      logger.error('[TicketService] Error fetching tickets:', ticketsError);
+      throw ticketsError;
+    }
+
+    logger.debug('[TicketService] Raw tickets data:', {
+      count: ticketsData?.length,
+      tickets: ticketsData?.map(t => ({
+        id: t.id,
+        title: t.title,
+        status: t.status,
+        assigned_agent_id: t.assigned_agent_id
+      }))
+    });
 
     if (!ticketsData) return [];
     
     // Enrich tickets with profile data
-    return Promise.all(ticketsData.map(ticket => this.enrichTicketWithProfiles(ticket)));
+    const enrichedTickets = await Promise.all(ticketsData.map(ticket => this.enrichTicketWithProfiles(ticket)));
+    
+    logger.debug('[TicketService] Enriched tickets:', {
+      count: enrichedTickets.length,
+      tickets: enrichedTickets.map(t => ({
+        id: t.id,
+        title: t.title,
+        status: t.status,
+        assigned_agent: t.assigned_agent?.id
+      }))
+    });
+
+    return enrichedTickets;
   }
 
   static async getTicket(id: string): Promise<TicketWithRelations> {
@@ -142,33 +208,88 @@ export class TicketService {
   }
 
   static async createTicket(dto: CreateTicketDTO): Promise<TicketWithRelations> {
-    const { data: ticket, error } = await supabase
-      .from('tickets')
-      .insert({
-        title: dto.title,
-        description: dto.description,
-        status: 'unassigned',
-        assigned_team_id: dto.team_id,
-      })
-      .select(this.TICKET_SELECT)
-      .single();
+    logger.info('[TicketService] Starting ticket creation', {
+      title: dto.title,
+      teamId: dto.team_id,
+      categoryCount: dto.category_ids.length,
+      hasAttachments: dto.attachments?.length > 0
+    });
 
-    if (error) throw error;
+    try {
+      // Get current user for logging
+      const { data: { user } } = await supabase.auth.getUser();
+      logger.debug('[TicketService] Current user context', {
+        userId: user?.id,
+        userRole: user?.user_metadata?.role
+      });
 
-    if (dto.category_ids.length > 0) {
-      const categories = dto.category_ids.map(category_id => ({
-        ticket_id: ticket.id,
-        category_id,
-      }));
+      // Create the ticket
+      logger.debug('[TicketService] Inserting ticket into database');
+      const { data: ticket, error } = await supabase
+        .from('tickets')
+        .insert({
+          title: dto.title,
+          description: dto.description,
+          status: 'unassigned',
+          assigned_team_id: dto.team_id,
+          created_by: user?.id
+        })
+        .select(this.TICKET_SELECT)
+        .single();
 
-      const { error: categoryError } = await supabase
-        .from('ticket_categories')
-        .insert(categories);
+      if (error) {
+        logger.error('[TicketService] Failed to create ticket', { error });
+        throw error;
+      }
 
-      if (categoryError) throw categoryError;
+      logger.info('[TicketService] Ticket created successfully', {
+        ticketId: ticket.id,
+        status: ticket.status,
+        teamId: ticket.assigned_team_id
+      });
+
+      // Add categories if provided
+      if (dto.category_ids.length > 0) {
+        logger.debug('[TicketService] Adding categories to ticket', {
+          ticketId: ticket.id,
+          categories: dto.category_ids
+        });
+
+        const categories = dto.category_ids.map(category_id => ({
+          ticket_id: ticket.id,
+          category_id,
+        }));
+
+        const { error: categoryError } = await supabase
+          .from('ticket_categories')
+          .insert(categories);
+
+        if (categoryError) {
+          logger.error('[TicketService] Failed to add categories', {
+            ticketId: ticket.id,
+            error: categoryError
+          });
+          throw categoryError;
+        }
+
+        logger.debug('[TicketService] Categories added successfully');
+      }
+
+      // Enrich ticket with profiles
+      logger.debug('[TicketService] Enriching ticket with profiles');
+      const enrichedTicket = await this.enrichTicketWithProfiles(ticket);
+      
+      logger.info('[TicketService] Ticket creation completed', {
+        ticketId: enrichedTicket.id,
+        teamName: enrichedTicket.team?.name,
+        categoryCount: dto.category_ids.length
+      });
+
+      return enrichedTicket;
+    } catch (error) {
+      logger.error('[TicketService] Ticket creation failed', { error });
+      throw error;
     }
-
-    return this.enrichTicketWithProfiles(ticket);
   }
 
   static async updateTicket(

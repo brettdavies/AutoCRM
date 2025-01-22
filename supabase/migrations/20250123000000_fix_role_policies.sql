@@ -61,6 +61,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+CREATE OR REPLACE FUNCTION is_team_lead()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN (
+    SELECT raw_user_meta_data->>'is_team_lead' = 'true'
+    FROM auth.users
+    WHERE id = auth.uid()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Profile Policies
 CREATE POLICY "Users can view own profile"
     ON profiles FOR SELECT
@@ -133,11 +144,7 @@ CREATE POLICY "Team leads can manage team members"
     USING (
         is_admin() OR
         (
-            -- Check if user is a team lead through metadata
-            (SELECT raw_user_meta_data->>'is_team_lead' = 'true' FROM auth.users WHERE id = auth.uid())
-            AND
-            -- Verify they are managing their own team
-            team_id = get_user_team_id()
+            is_team_lead() AND team_id = get_user_team_id()
         )
     );
 

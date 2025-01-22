@@ -1,3 +1,21 @@
+-- Drop Tables
+DROP TABLE IF EXISTS profiles cascade;
+DROP TABLE IF EXISTS teams cascade;
+DROP TABLE IF EXISTS team_members cascade;
+DROP TABLE IF EXISTS tickets cascade;
+DROP TABLE IF EXISTS ticket_categories cascade;
+DROP TABLE IF EXISTS ticket_watchers cascade;
+DROP TABLE IF EXISTS ticket_history cascade;
+DROP TABLE IF EXISTS conversations cascade;
+DROP TABLE IF EXISTS knowledge_base cascade;
+DROP TABLE IF EXISTS ai_feedback cascade;
+DROP TABLE IF EXISTS ai_learning_data cascade;
+
+-- Drop Types
+DROP TYPE IF EXISTS ticket_status cascade;
+DROP TYPE IF EXISTS watcher_type cascade;
+DROP TYPE IF EXISTS change_type cascade;
+
 -- PostgreSQL Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "vector";

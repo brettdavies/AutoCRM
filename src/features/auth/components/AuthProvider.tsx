@@ -102,33 +102,86 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { data: team } = useQuery({
     queryKey: ['team', profile?.team_id],
     queryFn: async () => {
-      if (!profile?.team_id) throw new Error('No team ID')
+      if (!profile?.team_id) return null;
       
       const { data: teamData, error: teamError } = await supabase
         .from('teams')
         .select('*')
         .eq('id', profile.team_id)
-        .single()
+        .single();
 
-      if (teamError) throw teamError
+      if (teamError) {
+        console.error('Failed to fetch team:', teamError);
+        return null;
+      }
 
-      const { data: members, error: membersError } = await supabase
+      if (!teamData) return null;
+
+      console.log('Team Data:', teamData);
+
+      // First get team members
+      const { data: teamMembers, error: membersError } = await supabase
+        .from('team_members')
+        .select('*')
+        .eq('team_id', profile.team_id);
+
+      console.log('Raw Team Members Response:', teamMembers);
+
+      if (membersError) {
+        console.error('Failed to fetch team members:', membersError);
+        console.error('User role:', session?.user?.user_metadata?.role);
+        console.error('Team ID:', profile.team_id);
+        return null;
+      }
+
+      // Then fetch profiles for all team members
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('team_id', profile.team_id)
+        .in('id', teamMembers.map(member => member.user_id));
 
-      if (membersError) throw membersError
+      console.log('Raw Profiles Data:', profilesData);
+
+      if (profilesError) {
+        console.error('Failed to fetch member profiles:', profilesError);
+        return null;
+      }
+
+      // Create a map of profiles for easy lookup
+      const profileMap = new Map(profilesData?.map(profile => [profile.id, profile]));
+      console.log('Profile Map:', Object.fromEntries(profileMap));
 
       // Convert database profiles to domain profiles
-      const teamMembers = members.map(member => ({
-        ...(member as ProfileRow),
-        team_id: member.team_id || null
-      })) satisfies Profile[]
+      const members = teamMembers.map(member => {
+        console.log('Processing member:', member);
+        const profile = profileMap.get(member.user_id);
+        console.log('Found profile:', profile);
+        if (!profile) return null;
 
-      return {
+        const domainProfile = {
+          id: profile.id,
+          email: profile.email,
+          full_name: profile.full_name,
+          role: session?.user?.user_metadata?.role || 'customer',
+          created_at: profile.created_at,
+          updated_at: profile.updated_at,
+          last_login_at: profile.last_login_at,
+          is_active: profile.is_active,
+          preferences: profile.preferences,
+          team_id: teamData.id
+        } satisfies Profile;
+        console.log('Created domain profile:', domainProfile);
+        return domainProfile;
+      }).filter((member): member is Profile => member !== null);
+
+      console.log('Final members array:', members);
+
+      const result = {
         teamId: teamData.id,
-        teamMembers
-      } satisfies TeamContext
+        teamMembers: members
+      } satisfies TeamContext;
+      console.log('Final team context:', result);
+      return result;
     },
     enabled: !!profile?.team_id
   })

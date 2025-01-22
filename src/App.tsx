@@ -1,9 +1,11 @@
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '@/features/auth/components/AuthProvider'
 import { Auth } from '@/features/auth/components/Auth'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth'
 import { TicketManagement } from '@/features/tickets/pages/TicketManagement'
+import { TicketCreationPage } from '@/features/tickets/pages/TicketCreationPage'
+import { TicketDetailsPage } from '@/features/tickets/pages/TicketDetailsPage'
 import '@/shared/styles/global/index.css'
 
 // Create a client
@@ -43,7 +45,12 @@ function MainLayout() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <TicketManagement />
+        <Routes>
+          <Route path="/ticket/new" element={<TicketCreationPage />} />
+          <Route path="/ticket/:id" element={<TicketDetailsPage />} />
+          <Route path="/ticket" element={<TicketManagement />} />
+          <Route path="/" element={<TicketManagement />} />
+        </Routes>
       </main>
     </div>
   )
