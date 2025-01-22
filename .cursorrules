@@ -1,613 +1,348 @@
 # .cursorrules
 
-## Overview
+## Core Principles
 
-1. Only work on the feature you are assigned to.
-2. Do not work on features that are not assigned to you.
-3. Do not delete or modify code that is not related to the feature you are working on.
-4. Write code that is clean, readable, and maintainable.
-5. If you are unsure about the feature or code you are working on, ask the team before coding it.
-6. If you think there needs to be a change outside of the feature you are working on, ask the team before coding it.
+1. **Team Workflow**:
+   - Only work on assigned features
+   - Don't modify unrelated code
+   - Ask team before making cross-feature changes
+   - Write clean, readable, maintainable code
 
-## General Rules
+2. **Supabase-First Development**:
+   - Always use Supabase features over custom implementations
+   - Leverage built-in functionality:
+     - Auth: Use Supabase Auth for all authentication/authorization
+     - Database: Use PostgreSQL features and RLS policies
+     - Real-time: Use Supabase's real-time subscriptions
+     - Edge Functions: Use Supabase Edge Functions for serverless logic
+     - Storage: Use Supabase Storage for file handling
+   - Before implementing custom solutions:
+     - Check Supabase documentation for existing features
+     - Consult team about Supabase capabilities
+     - Document why Supabase features weren't suitable (if custom solution needed)
 
-1. **Follow Best Practices**:
-   - Use type hints, logging, and docstrings as per global instructions.
-   - Ensure your environment variables are managed securely.
-   - Use Passport.js with session-based authentication for all authentication functionality.
-
-2. **API Development Rules**:
-   - Always create/update OpenAPI specification before implementing routes
-   - Maintain strict alignment between OpenAPI specs and route implementations
-   - Required files for any endpoint change:
-     - OpenAPI spec in `/server/src/openapi/paths/`
-     - Route handler in `/server/src/routes/`
-     - Response types in `/server/src/openapi/schemas/`
-   - Run OpenAPI validation before committing changes
-   - Include both spec and implementation in the same PR
-
-3. **Naming Conventions**:
-   - Directory names: Use kebab-case for all directories
-   - File extensions: Use `.ts` for TypeScript files, `.tsx` for React components
-   - Database:
-     - Table names: Plural, snake_case (e.g., `user_profiles`, `chat_messages`)
-     - Column names: Singular, snake_case (e.g., `first_name`, `created_at`)
-     - Foreign keys: `<table_name>_id` (e.g., `user_id`, `channel_id`)
-     - Indexes: `idx_<table>_<column(s)>` (e.g., `idx_users_email`)
-     - Migration files: `YYYYMMDD_description.sql` (e.g., `20240112_add_user_roles.sql`)
-   - Backend:
-     - Controllers: kebab-case with `-controller.ts` suffix (e.g., `user-controller.ts`)
-     - Services: kebab-case with `-service.ts` suffix (e.g., `auth-service.ts`)
-     - Routes: kebab-case with `-routes.ts` suffix (e.g., `user-routes.ts`)
-     - Middleware: kebab-case with `-middleware.ts` suffix (e.g., `auth-middleware.ts`)
-     - Config: kebab-case with `-config.ts` suffix (e.g., `database-config.ts`)
-     - Types/Interfaces:
-       - Types: PascalCase (e.g., `UserRole.ts`, `MessageType.ts`)
-       - Interfaces: PascalCase with `I` prefix (e.g., `IUser.ts`, `IMessage.ts`)
-     - Utils: kebab-case with `.ts` suffix (e.g., `string-utils.ts`, `date-utils.ts`)
-     - Tests: Place in `__tests__` with `.test.ts` suffix (e.g., `user-service.test.ts`)
-     - Mocks: Place in `__mocks__` with same name as mocked file
-     - Environment files:
-       - Development: `.env.development`
-       - Production: `.env.production`
-       - Local overrides: `.env.local`
-       - Example template: `.env.example`
-   - Frontend:
-     - Components:
-       - Files: PascalCase with `.tsx` suffix (e.g., `UserProfile.tsx`, `ChatMessage.tsx`)
-       - Directories: kebab-case (e.g., `user-profile/`, `chat-messages/`)
-     - Hooks:
-       - Files: camelCase with `use` prefix and `.ts` suffix (e.g., `useAuth.ts`, `useChannel.ts`)
-       - Directories: kebab-case (e.g., `hooks/auth/`, `hooks/channel/`)
-     - Store:
-       - Files: kebab-case with `.store.ts` suffix (e.g., `user.store.ts`, `auth.store.ts`)
-       - Directories: kebab-case (e.g., `stores/`)
-     - Utils:
-       - Files: kebab-case with `.ts` suffix (e.g., `string.utils.ts`, `date.utils.ts`)
-       - Directories: kebab-case (e.g., `utils/string/`, `utils/date/`)
-     - Styles:
-       - Files: kebab-case with `.styles.ts` suffix (e.g., `button.styles.ts`)
-       - Directories: kebab-case (e.g., `styles/`)
-     - Types:
-       - Files: PascalCase with `.types.ts` suffix (e.g., `User.types.ts`, `Message.types.ts`)
-       - Directories: kebab-case (e.g., `types/`)
-     - Services:
-       - Files: kebab-case with `.service.ts` suffix (e.g., `auth.service.ts`, `api.service.ts`)
-       - Directories: kebab-case (e.g., `services/auth/`, `services/api/`)
-     - Tests: Place in `__tests__` with `.test.tsx` or `.test.ts` suffix
-     - Mocks: Place in `__mocks__` with same name as mocked file
-
-3. **TypeScript Type Organization**:
-   a) **Type Directory Structure**:
-
-      ```
-      src/
-      ├── types/                    # Domain and shared types
-      │   ├── channel.types.ts      # Core domain models
-      │   ├── message.types.ts
-      │   ├── user.types.ts
-      │   ├── common.types.ts       # Shared utility types
-      │   └── api/                  # API-specific types
-      │       ├── channel.api.types.ts
-      │       ├── message.api.types.ts
-      │       └── user.api.types.ts
-      ├── stores/                   # Store-specific types
-      │   ├── channel.store.ts      # Contains ChannelState and ChannelActions
-      │   └── message.store.ts      # Contains MessageState and MessageActions
-      └── components/               # Component-specific types
-          └── channels/
-              └── channel-view/
-                  └── ChannelView.tsx  # Contains ChannelViewProps
-      ```
-
-   b) **Domain Types** (`@/types/*.types.ts`):
-      - Core domain models and interfaces (e.g., `Channel`, `Message`)
-      - Enums and shared types
-      - No API or store-specific types
-      - Must be the single source of truth for domain models
-      - Example: `channel.types.ts`, `message.types.ts`
-
-   c) **Shared Utility Types** (`@/types/common.types.ts`):
-      - Reusable type utilities and helpers
-      - Generic types used across multiple features
-      - Common type patterns and transformations
-      - Example: `Nullable<T>`, `AsyncResult<T>`, `Pagination<T>`
-
-   d) **API Types** (`@/types/api/*.types.ts`):
-      - API request/response interfaces
-      - Must follow API naming conventions (e.g., `created_at` vs `createdAt`)
-      - Must import and reference domain types when needed
-      - Example: `channel.api.types.ts`, `message.api.types.ts`
-
-   e) **Store Types** (in respective store files):
-      - Must import domain types from `@/types/`
-      - Only define store-specific interfaces (state and actions)
-      - Never redefine domain models
-      - Example: `interface ChannelState`, `interface ChannelActions`
-
-   f) **Component Types**:
-      - Must import domain types from `@/types/`
-      - Must import API types from `@/types/api/`
-      - Only define component-specific props interfaces locally
-      - Example: `interface ChannelViewProps`, `interface MessageListProps`
-
-   g) **Type Naming Conventions**:
-      - Domain interfaces: PascalCase (e.g., `Channel`, `Message`)
-      - API interfaces: Prefix with `Api` (e.g., `ApiChannel`, `ApiMessage`)
-      - Request/Response types: Suffix with `Request`/`Response` (e.g., `CreateChannelRequest`)
-      - Store interfaces: Suffix with `State`/`Actions` (e.g., `ChannelState`, `ChannelActions`)
-      - Props interfaces: Suffix with `Props` (e.g., `ChannelViewProps`)
-
-   h) **Type Import Rules**:
-      - Always use `@/types/` alias for domain types
-      - Always use `@/types/api/` alias for API types
-      - Never use relative imports for types from `@/types/` directory
-      - Example: `import { Channel } from '@/types/channel.types';`
-
-4. **Environment Variables**:
-   - Update `.env.example` when new environment variables are introduced.
-   - Store actual values in `.env.local` and never expose sensitive variables to the frontend.
-   - Group environment variables by functionality (DB, API, etc.)
-
-5. **File Structure**:
-   - Organize components, hooks, and utilities based on the provided project structure.
-   - Keep shared and one-off components separate (e.g., `/components` vs. `/_components`).
-
----
-
-## Git Rules
-
-- Use lowercase for commit messages.
-- Write concise summaries for commit messages.
-- Include descriptions for non-obvious changes.
-
-**Commit Message Workflow**:
-
-1. Always run `cd /Users/brett/Library/CloudStorage/Dropbox/Docs/Work/Github/ChatGenius && (git status && echo -e "\nChanges in files:" && git diff) > .idea/_gitdiff.tmp` first to get a clear view of:
-   - Changed files
-   - Untracked files
-   - Deleted files
-   - Current branch status
-   - Detailed file changes across the entire repository
-   - Save the output to `.idea/_gitdiff.tmp`
-   - Use `.idea/_gitdiff.tmp` as the source of truth for the commit message
-
-2. Structure the commit message following this format and save to `.idea/git_changes.tmp`:
+3. **Architecture Overview**:
 
    ```plaintext
-   type(scope): concise summary of changes
-
-   - Bullet points listing specific changes
-   - Additional context if needed
+   AutoCRM/
+   ├── src/                 # Application source
+   │   ├── features/        # Feature modules
+   │   ├── shared/         # Shared utilities
+   │   │   ├── components/ # Shared components
+   │   │   ├── styles/     # Global styles
+   │   │   │   ├── components/  # Component styles
+   │   │   │   ├── themes/      # Theme definitions
+   │   │   │   └── global/      # Global styles
+   │   │   └── utils/     # Shared utilities
+   │   ├── core/          # Base implementations
+   │   │   ├── supabase/  # Supabase integration
+   │   │   ├── api/       # API clients
+   │   │   └── config/    # App configuration
+   │   └── types/         # Global types
+   ├── supabase/          # Supabase configuration
+   │   ├── migrations/    # Database migrations
+   │   │   └── [timestamp]_name.sql
+   │   ├── functions/     # Edge Functions
+   │   │   └── [function-name]/
+   │   │       ├── index.ts
+   │   │       └── schema.ts
+   │   ├── seed.sql      # Seed data
+   │   └── config.toml   # Supabase config
+   ├── public/           # Static assets
+   ├── dist/            # Build output
+   └── .env.*           # Environment files
+       ├── .env.example
+       ├── .env.development
+       └── .env.production
    ```
 
-- Include **Feature ID(s)** in the commit summary for all features included in the commit.
-  - Format: `type(scope): message`
-  - Example:
+## Feature Organization
 
-    ```plaintext
-    feat(auth): added OAuth login functionality
-    ```
+1. **Feature Module Structure**:
 
-- For commits with multiple features or significant changes, use this extended format:
-
-  ```plaintext
-  type(scope): summary message
-
-  Feature Name:
-  - Change 1
-  - Change 2
-  - Change 3
-
-  Feature Name:
-  - Change 1
-  - Change 2
-  - Change 3
-
-  Breaking changes:
-  - List any breaking changes here
-  - One per line
-
-  Additional notes:
-  - Any other relevant information
-  - Migration steps if needed
-  ```
-
-- Commit types:
-  - `feat`: New feature
-  - `fix`: Bug fix
-  - `docs`: Documentation only changes
-  - `style`: Changes that do not affect the meaning of the code
-  - `refactor`: Code change that neither fixes a bug nor adds a feature
-  - `test`: Adding missing tests or correcting existing tests
-  - `chore`: Changes to the build process or auxiliary tools
-
----
-
-## Documentation Rules
-
-- Update relevant markdown files as you work on features.
-- Maintain evergreen documents by marking incomplete sections with `[[TODO]]` or notes for follow-up.
-- Document API interactions, data flows, and any permissions required for functionality.
-- Ensure `manifest.json` and other key configuration files are well-documented.
-- When writing feature documentation, do not remove any headers or subheaders. If a header or subheader is not relevant to the feature, write "[[ Not relevant to this feature ]]".
-
----
-
-## Frontend-Specific Rules
-
-1. **Component Rules**:
-   - Always declare whether a component is `use server` or `use client` at the top.
-   - Maintain visual spacing in JSX with extra blank lines for readability.
-
-2. **Store Pattern Rules**:
-   - All global state must be managed using Zustand stores
-   - Store files must follow the pattern:
-
-     ```typescript
-     interface StateInterface {
-       data: DataType[];
-       loading: boolean;
-       error: string | null;
-     }
-
-     interface ActionsInterface {
-       setData: (data: DataType[]) => void;
-       addItem: (item: DataType) => void;
-       setLoading: (loading: boolean) => void;
-       setError: (error: string | null) => void;
-       reset: () => void;
-     }
-     ```
-
-   - Store implementations must:
-     - Define an `initialState` constant
-     - Export a `use{Entity}Store` hook created with Zustand
-     - Include standard actions: `setData`, `addItem`, `setLoading`, `setError`, `reset`
-   - Components must:
-     - Use store hooks for all global state management
-     - Never maintain API response data in local state
-     - Handle loading and error states from the store
-     - Clean up store state on unmount using `reset()`
-
-3. **Data Fetching**:
-   - Fetch data in server components and pass it as props to client components.
-   - Use `/actions` for server actions and ensure they return ActionState.
-   - When fetching data that needs to be globally available:
-     1. Set loading state using store's `setLoading`
-     2. Execute the API call
-     3. Update store with `setData` on success
-     4. Handle errors with `setError`
-     5. Clean up with `reset` on component unmount
-
----
-
-## Backend-Specific Rules
-
-1. **Database Schema**:
-   - Include `createdAt` and `updatedAt` columns in all tables.
-   - Use enums for limited value sets (e.g., `membership: ["free", "pro"]`).
-2. **Actions**:
-   - CRUD actions should follow the pattern:
-     - Create
-     - Read
-     - Update
-     - Delete
-   - Always include meaningful error handling and logging.
-
----
-
-## Development Workflow
-
-- Use proper version control with branching and commit conventions.
-- Ensure all code passes tests in local and staging environments before deployment.
-- Follow semantic versioning (`MAJOR.MINOR.PATCH`) for releases.
-
-## Directory Structure Rules
-
-1. **Source Code Organization**:
-   - Client-side code goes in `/client/src/`
-   - Server-side code goes in `/server/src/`
-   - Never mix client and server code in the same directory
-   - Always check which `src` directory you're in before making changes
-
-2. **Root Directory Structure**:
-   ```
-   ChatGenius/
-   ├── client/
-   │   ├── src/           # Client-side source code
-   │   ├── public/        # Static assets
-   │   └── dist/          # Built client files
-   ├── server/
-   │   ├── src/           # Server-side source code
-   │   └── dist/          # Built server files
-   └── shared/            # Shared types and utilities
-       └── src/           # Shared source code
+   ```plaintext
+   feature-name/
+   ├── components/        # UI Components
+   │   ├── FeatureComponent.tsx
+   │   └── index.ts      # Barrel export
+   ├── services/         # Business Logic
+   │   ├── FeatureService.ts
+   │   └── index.ts
+   ├── hooks/            # Custom Hooks
+   │   ├── useFeature.ts
+   │   └── index.ts
+   ├── store/            # State Management
+   │   ├── feature.store.ts
+   │   └── index.ts
+   ├── types/            # Feature Types
+   │   ├── feature.types.ts
+   │   └── index.ts
+   ├── __tests__/        # Tests
+   │   ├── components/
+   │   ├── hooks/
+   │   └── services/
+   ├── __mocks__/        # Test mocks
+   └── index.ts          # Public API
    ```
 
-3. **Working Directory Rules**:
-   - Always verify the correct working directory before making changes
-   - Use absolute imports with path aliases to avoid confusion
-   - Server-side changes must be in `/server/src/`
-   - Client-side changes must be in `/client/src/`
-   - Shared code must be in `/shared/src/`
+2. **Feature Boundaries**:
+   - Self-contained modules
+   - Clear public API through index.ts
+   - Cross-feature communication via stores only
+   - Feature-specific types in feature directory
 
-## File Structure
+## Naming & Type System
 
-1. **Directory Organization**:
-   - Server code must be in `/server/src/`:
-     - Routes: `/server/src/routes/`
-     - Controllers: `/server/src/controllers/`
-     - Services: `/server/src/services/`
-     - Middleware: `/server/src/middleware/`
-     - Config: `/server/src/config/`
-     - Types: `/server/src/types/`
-     - Utils: `/server/src/utils/`
-     - Tests: `/server/src/__tests__/`
-   
-   - Client code must be in `/client/src/`:
-     - Components: `/client/src/components/`
-     - Hooks: `/client/src/hooks/`
-     - Store: `/client/src/store/`
-     - Utils: `/client/src/utils/`
-     - Types: `/client/src/types/`
-     - Tests: `/client/src/__tests__/`
+1. **File Naming**:
+   - Components: PascalCase.tsx (UserProfile.tsx)
+   - Services: PascalCase + 'Service'.ts (UserService.ts)
+   - Hooks: camelCase + 'use' prefix (useAuth.ts)
+   - Types: PascalCase + '.types.ts' (User.types.ts)
+   - Tests: Original + '.test.ts' (UserService.test.ts)
+   - Directories: kebab-case (user-management/)
 
-2. **Import Rules**:
-   - Use path aliases relative to the appropriate src directory:
-     - Server: `@/*` maps to `/server/src/*`
-     - Client: `@/*` maps to `/client/src/*`
-     - Shared: `@shared/*` maps to `/shared/src/*`
+2. **Type Organization**:
+   - Global: `@/types/`
 
-## Constants and Configuration
-
-1. **Route Constants**:
-   - All API routes must be defined in `src/constants/routes.constants.ts`
-   - Base paths (e.g., `/api`) must be defined as constants and reused
-   - Route structure:
      ```typescript
-     // Base paths
-     export const API_BASE = '/api';
-     
-     // Feature routes
-     export const API_ROUTES = {
-       FEATURE: `${API_BASE}/feature`,
-     } as const;
-     
-     // Sub-routes
-     export const FEATURE_ROUTES = {
-       ACTION: '/action',
-     } as const;
-     ```
-   - Usage in route files:
-     ```typescript
-     import { API_ROUTES, FEATURE_ROUTES } from '@constants/routes.constants';
-     
-     // Mounting routes
-     app.use(API_ROUTES.FEATURE, featureRoutes);
-     
-     // Defining endpoints
-     router.post(FEATURE_ROUTES.ACTION, handler);
-     ```
-   - Usage in tests:
-     ```typescript
-     describe(`POST ${API_ROUTES.FEATURE}${FEATURE_ROUTES.ACTION}`, () => {
-       it('should...', async () => {
-         await request(app).post(`${API_ROUTES.FEATURE}${FEATURE_ROUTES.ACTION}`);
-       });
-     });
+     database.types.ts  # Supabase schema
+     supabase.types.ts  # Client types
+     common.types.ts    # Shared utilities
      ```
 
-2. **Other Constants**:
-   - Group related constants in feature-specific files (e.g., `auth.constants.ts`)
-   - Use TypeScript `as const` assertion for better type inference
-   - Export individual constants or grouped objects based on usage
-   - Place in appropriate subdirectory under `src/constants/`
-   - Examples:
-     ```typescript
-     // Error codes
-     export const ERRORS = {
-       FEATURE: {
-         NOT_FOUND: 'FEATURE_NOT_FOUND',
-       },
-     } as const;
+   - Feature: `@/features/[feature]/types/`
 
-     // Configuration
-     export const CONFIG = {
-       FEATURE: {
-         MAX_ITEMS: 100,
-       },
-     } as const;
+     ```typescript
+     state.types.ts    # Store types
+     models.types.ts   # Domain models
+     api.types.ts      # API types
      ```
 
-3. **Environment Variables**:
-   - Define types for all environment variables
-   - Centralize environment variable access
-   - Validate at startup
-   - Example:
-     ```typescript
-     // src/config/env.ts
-     export const ENV = {
-       NODE_ENV: process.env.NODE_ENV,
-       PORT: parseInt(process.env.PORT || '3000'),
-     } as const;
-     ```
+3. **Database Naming**:
+   - Tables: plural_snake_case (user_profiles)
+   - Columns: singular_snake_case (first_name)
+   - Keys: table_name_id (user_id)
+   - Indexes: idx_table_column (idx_users_email)
 
-4. **Naming Conventions**:
-   - Constants should be in UPPER_SNAKE_CASE
-   - Grouped constants should be in PascalCase
-   - Use descriptive prefixes for related constants
-   - Examples:
-     ```typescript
-     export const MAX_ITEMS = 100;
-     export const UserRoles = {
-       ADMIN: 'ADMIN',
-       USER: 'USER',
-     } as const;
-     ```
+## Import & Path System
 
-5. **Type Safety**:
-   - Use TypeScript's const assertions
-   - Define and export types for constants when needed
-   - Example:
-     ```typescript
-     export const STATUSES = {
-       ACTIVE: 'active',
-       INACTIVE: 'inactive',
-     } as const;
-     
-     export type Status = typeof STATUSES[keyof typeof STATUSES];
-     ```
+1. **Path Aliases**:
 
-6. **Documentation**:
-   - Add JSDoc comments for complex constants
-   - Explain any non-obvious values or relationships
-   - Example:
-     ```typescript
-     /** Maximum number of failed login attempts before lockout */
-     export const MAX_LOGIN_ATTEMPTS = 5;
-     
-     /** Lockout duration in minutes */
-     export const LOCKOUT_DURATION = 15;
-     ```
-
-7. **Testing**:
-   - Import constants directly in tests
-   - Never hardcode values that are defined in constants
-   - Use constants in test descriptions for clarity
-   - Example:
-     ```typescript
-     import { MAX_LOGIN_ATTEMPTS } from '@constants/auth.constants';
-     
-     it(`should lock account after ${MAX_LOGIN_ATTEMPTS} failed attempts`, () => {
-       // Test implementation
-     });
-     ```
-
-8. **Maintenance**:
-   - Review and update constants during feature changes
-   - Keep constants organized and grouped logically
-   - Remove unused constants during cleanup
-   - Consider backwards compatibility when changing constants
-
-## Rate Limiting
-
-1. **Centralized Configuration**:
-   - All rate limits are defined in `src/config/env.ts` under the `RATE_LIMIT` object
-   - Each feature has its own rate limit configuration (e.g., `AUTH`, `TOTP`, `CHANNELS`, etc.)
-   - Rate limits are configurable through environment variables
-   - Default values are provided for development
-
-2. **Rate Limit Structure**:
    ```typescript
-   RATE_LIMIT: {
-     FEATURE_NAME: {
-       ACTION: {
-         WINDOW_MS: number,  // Time window in milliseconds
-         MAX_REQUESTS: number // Maximum requests in window
-       }
+   // vite.config.ts
+   resolve: {
+     alias: {
+       '@': '/src',
+       '@features': '/src/features',
+       '@shared': '/src/shared',
+       '@core': '/src/core',
+       '@types': '/src/types'
      }
    }
    ```
 
-3. **Middleware Implementation**:
-   - Create feature-specific rate limit files in `src/middleware/`
-   - Use the naming pattern: `{feature}-rate-limit.ts`
-   - Implement using the `createLimiter` helper function
-   - Example:
-     ```typescript
-     export const featureActionLimiter = createLimiter({
-       windowMs: ENV.RATE_LIMIT.FEATURE.ACTION.WINDOW_MS,
-       max: ENV.RATE_LIMIT.FEATURE.ACTION.MAX_REQUESTS,
-       message: {
-         message: 'Rate limit exceeded message',
-         code: 'RATE_LIMIT_EXCEEDED'
-       }
-     });
-     ```
+2. **Import Organization**:
 
-4. **Environment Variables**:
-   - Use the naming pattern: `{FEATURE}_{ACTION}_RATE_LIMIT_WINDOW_MS`
-   - Use the naming pattern: `{FEATURE}_{ACTION}_RATE_LIMIT_MAX_REQUESTS`
-   - Example:
-     ```env
-     TOTP_SETUP_RATE_LIMIT_WINDOW_MS=900000
-     TOTP_SETUP_RATE_LIMIT_MAX_REQUESTS=5
-     ```
+   ```typescript
+   // External packages
+   import React from 'react'
+   import { useQuery } from '@tanstack/react-query'
 
-5. **Development Mode**:
-   - Rate limits are automatically disabled in development and test modes
-   - Use the `createLimiter` helper to handle this consistently
+   // Core & shared
+   import { Button } from '@/shared/components'
+   import { BaseService } from '@/core/base'
 
-6. **Error Handling**:
-   - Rate limit errors should return:
-     ```json
-     {
-       "message": "Rate limit exceeded message",
-       "code": "RATE_LIMIT_EXCEEDED"
-     }
-     ```
-   - Include standardized rate limit headers
-   - Use consistent error messages across features
+   // Feature imports
+   import { UserProfile } from '@/features/user-management'
 
-## TypeScript Type Organization
-
-1. **Core Principle**: All types must be defined in dedicated type files, never inline in implementation files.
-
-2. **Type File Structure**:
-   ```
-   src/
-   ├── types/
-   │   ├── stores/              # Store-specific types
-   │   │   ├── channel.store.types.ts
-   │   │   └── message.store.types.ts
-   │   ├── models/             # Domain model types
-   │   │   ├── channel.types.ts
-   │   │   └── message.types.ts
-   │   └── api/               # API-specific types
-       └── common.types.ts    # Shared utility types
+   // Types
+   import type { User } from '@/types/models'
    ```
 
-3. **Store Type Rules**:
-   - ❌ NEVER define types directly in store files
-   - ✅ ALWAYS define store types in dedicated type files:
-     ```typescript
-     // types/stores/channel.store.types.ts
-     import { Channel } from '../models/channel.types';
-     
-     export interface ChannelState {
-       channels: Channel[];
-       loading: boolean;
-     }
-     
-     export interface ChannelActions {
-       addChannel: (channel: Channel) => void;
-       removeChannel: (id: string) => void;
-     }
-     ```
-   - ✅ Import and use types in store files:
-     ```typescript
-     // stores/channel.store.ts
-     import { ChannelState, ChannelActions } from '@/types/stores/channel.store.types';
-     
-     export const useChannelStore = create<ChannelState & ChannelActions>((set) => ({
-       channels: [],
-       loading: false,
-       // ... implementation
-     }));
+3. **Import Rules**:
+   - Use absolute imports with @/ prefix
+   - Import from feature's public API
+   - No deep imports into other features
+   - Group imports by category
+
+## State Management
+
+1. **Store Pattern**:
+
+   ```typescript
+   interface FeatureState {
+     data: Data[]
+     loading: boolean
+     error: Error | null
+   }
+
+   interface FeatureActions {
+     fetch: () => Promise<void>
+     reset: () => void
+   }
+   ```
+
+2. **State Organization**:
+   - Feature state in feature/store
+   - Global state in core/store
+   - Local state with React hooks
+   - Cross-feature state via events
+
+## Technical Integration
+
+1. **Supabase Integration**:
+   - Database:
+
+     ```sql
+     -- migrations/[timestamp]_create_users.sql
+     create table public.users (
+       id uuid references auth.users primary key,
+       created_at timestamptz default now(),
+       updated_at timestamptz default now()
+     );
+
+     -- Enable RLS
+     alter table public.users enable row level security;
+
+     -- Create policies
+     create policy "Users can view own data" on public.users
+       for select using (auth.uid() = id);
      ```
 
-4. **Type Import Rules**:
-   - Use absolute imports with `@/types/` alias
-   - Group imports by type category (models, store, api)
-   - Example:
+   - Edge Functions:
+
      ```typescript
-     // Good
-     import { Channel } from '@/types/models/channel.types';
-     import { ChannelState } from '@/types/stores/channel.store.types';
-     import { ChannelResponse } from '@/types/api/channel.api.types';
-     
-     // Bad
-     import { Channel } from '../../types/models/channel.types';
-     import { ChannelState } from './types';
+     // functions/process-data/index.ts
+     import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+     serve(async (req) => {
+       const supabase = createClient(
+         Deno.env.get('SUPABASE_URL') ?? '',
+         Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+       )
+       // Implementation
+     })
      ```
+
+   - Client Setup:
+
+     ```typescript
+     // src/lib/supabase.ts
+     import { createClient } from '@supabase/supabase-js'
+     import type { Database } from '@/types/database.types'
+
+     export const supabase = createClient<Database>(
+       import.meta.env.VITE_SUPABASE_URL,
+       import.meta.env.VITE_SUPABASE_ANON_KEYw
+     )
+     ```
+
+   - Real-time Subscriptions:
+
+     ```typescript
+     // In components/features
+     const subscription = supabase
+       .channel('table_db_changes')
+       .on(
+         'postgres_changes',
+         { event: '*', schema: 'public', table: 'table_name' },
+         (payload) => {
+           // Handle change
+         }
+       )
+       .subscribe()
+     ```
+
+   - Error Handling Pattern:
+
+     ```typescript
+     try {
+       const { data, error } = await supabase.from('table').select()
+       if (error) throw error
+     } catch (error) {
+       logger.error('Operation failed', { error })
+     }
+     ```
+
+   - Security:
+     - RLS policies for all tables
+     - Edge Functions for sensitive operations
+     - Proper auth token handling
+     - Regular security audits
+
+2. **React Patterns**:
+   - Functional components
+   - Error boundaries
+   - Suspense for loading
+   - React Query for data
+
+3. **TailwindCSS Usage**:
+
+   ```typescript
+   const styles = {
+     base: 'px-4 py-2 rounded',
+     primary: 'bg-blue-500 hover:bg-blue-600'
+   }
+   ```
+
+## Quality Assurance
+
+1. **Testing Structure**:
+
+   ```plaintext
+   feature/
+   ├── __tests__/
+   │   ├── components/
+   │   └── services/
+   └── __fixtures__/
+   ```
+
+2. **Error Handling**:
+   - Error boundaries
+   - Toast notifications
+   - Logging system
+   - Monitoring setup
+
+3. **Performance**:
+   - Component memoization
+   - Query caching
+   - Bundle optimization
+   - Load time monitoring
+
+4. **Accessibility**:
+   - ARIA attributes
+   - Keyboard navigation
+   - Screen reader support
+   - Contrast validation
+
+## Version Control
+
+1. **Git Workflow**:
+
+   ```plaintext
+   type(scope): concise summary
+
+   - Detailed change 1
+   - Detailed change 2
+   ```
+
+2. **Branch Structure**:
+   - feature/feature-name
+   - fix/issue-description
+   - release/version
+
+## Configuration
+
+1. **Environment**:
+
+   ```plaintext
+   VITE_SUPABASE_URL=url
+   VITE_SUPABASE_ANON_KEY=key
+   VITE_ENABLE_FEATURE_X=true
+   ```
+
+2. **Feature Flags**:
+   - Runtime controls
+   - Environment-based
+   - Feature toggles
