@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { TicketDetails } from '../components/TicketDetails';
+import { ConversationPanel } from '../components/ConversationPanel';
 import { Card, ScrollArea } from '@/shared/components';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { ticketRoutes } from '../routes';
@@ -29,13 +30,20 @@ export function TicketDetailsPage() {
         backLink={ticketRoutes.list}
       />
       
-      <Card className="h-full">
-        <ScrollArea className="h-full">
-          <div className="p-6">
-            <TicketDetails ticketId={ticketId} />
-          </div>
-        </ScrollArea>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="h-[calc(100vh-16rem)]">
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <TicketDetails ticketId={ticketId} />
+            </div>
+          </ScrollArea>
+        </Card>
+
+        <ConversationPanel
+          ticketId={ticketId}
+          className="h-[calc(100vh-16rem)]"
+        />
+      </div>
     </div>
   );
 }
