@@ -1,103 +1,70 @@
 import { useState } from 'react'
-import { supabase } from '@/core/supabase/client'
-import type { UserRole } from '../types/auth.types'
-import logger from '@/shared/utils/logger.utils'
-
-interface DemoUser {
-  email: string
-  role: UserRole
-  label: string
-  password: string
-}
-
-// Demo users with credentials
-const DEMO_USERS: DemoUser[] = [
-  {
-    email: 'admin@example.com',
-    role: 'admin',
-    label: 'Admin',
-    password: 'admin123'
-  },
-  {
-    email: 'tech_agent1@example.com',
-    role: 'agent',
-    label: 'Agent',
-    password: 'agent123'
-  },
-  {
-    email: 'customer1@example.com',
-    role: 'customer',
-    label: 'Customer',
-    password: 'customer123'
-  }
-]
+import { useAuth } from '../hooks/useAuth'
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  Button,
+} from '@/shared/components'
+import type { UserRole } from '@/core/supabase/types/database.types'
 
 export function DemoLogin() {
-  const [isLoading, setIsLoading] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const { signInWithDemo } = useAuth()
 
-  const handleDemoLogin = async (user: DemoUser) => {
+  const handleDemoLogin = async (role: UserRole) => {
     try {
-      setIsLoading(user.role)
-      setError(null)
-
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: user.password
-      })
-
-      if (signInError) throw signInError
-
-      logger.info(`Demo login successful: ${user.role}`)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to login'
-      setError(message)
-      logger.error('Demo login failed:', err)
+      setIsLoading(true)
+      await signInWithDemo(role)
+    } catch (error) {
+      console.error('Demo login failed:', error)
     } finally {
-      setIsLoading(null)
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">
-        Want to try it out?
-      </h2>
-      <p className="text-gray-600 mb-6">
-        Experience AutoCRM with a demo account - no signup required!
-      </p>
-      <div className="space-y-3">
-        {DEMO_USERS.map((user) => (
-          <button
-            key={user.role}
-            onClick={() => handleDemoLogin(user)}
-            disabled={isLoading !== null}
-            className={`
-              w-full px-4 py-2 rounded-md font-medium transition-colors
-              ${isLoading === user.role ? 'animate-pulse' : ''}
-              ${
-                user.role === 'admin'
-                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                  : user.role === 'agent'
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }
-              disabled:opacity-50 disabled:cursor-not-allowed
-            `}
+    <Card>
+      <CardHeader>
+        <CardTitle>Demo Mode</CardTitle>
+        <CardDescription>
+          Try out AutoCRM with a demo account. No sign up required.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-muted-foreground mb-4">
+          Get instant access to all features with our pre-configured demo environment.
+          Perfect for exploring the platform before creating an account.
+        </p>
+        <div className="flex flex-col gap-2">
+          <Button
+            className="w-full"
+            onClick={() => handleDemoLogin('admin')}
+            disabled={isLoading}
+            variant="default"
           >
-            {isLoading === user.role ? (
-              <span>Logging in...</span>
-            ) : (
-              <span>Login as {user.label}</span>
-            )}
-          </button>
-        ))}
-        {error && (
-          <div className="mt-4 text-sm text-red-600">
-            {error}
-          </div>
-        )}
-      </div>
-    </div>
+            {isLoading ? 'Loading...' : 'Try as Admin'}
+          </Button>
+          <Button
+            className="w-full"
+            onClick={() => handleDemoLogin('agent')}
+            disabled={isLoading}
+            variant="secondary"
+          >
+            {isLoading ? 'Loading...' : 'Try as Agent'}
+          </Button>
+          <Button
+            className="w-full"
+            onClick={() => handleDemoLogin('customer')}
+            disabled={isLoading}
+            variant="outline"
+          >
+            {isLoading ? 'Loading...' : 'Try as Customer'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 } 

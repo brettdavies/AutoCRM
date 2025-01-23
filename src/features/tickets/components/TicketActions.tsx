@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
 import { useTicket } from '../hooks/useTicket';
 import type { TicketStatus } from '../types/ticket.types';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Button,
+  Input,
+  Label,
+  Badge,
+} from '@/shared/components';
 
 interface TicketActionsProps {
   ticketId: string;
@@ -70,137 +80,130 @@ export function TicketActions({ ticketId, onActionComplete }: TicketActionsProps
   return (
     <div className="space-y-6">
       {/* Status Actions */}
-      <div className="bg-white shadow rounded-lg p-4">
-        <h3 className="text-lg font-medium mb-4">Update Status</h3>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => handleStatusChange('in_progress')}
-            disabled={ticket.status === 'in_progress'}
-            className={`px-4 py-2 rounded-md text-white font-medium
-              ${ticket.status === 'in_progress' 
-                ? 'bg-blue-300 cursor-not-allowed' 
-                : 'bg-blue-600 hover:bg-blue-700'}`}
-          >
-            Start Progress
-          </button>
-          <button
-            onClick={() => handleStatusChange('under_review')}
-            disabled={ticket.status === 'under_review'}
-            className={`px-4 py-2 rounded-md text-white font-medium
-              ${ticket.status === 'under_review'
-                ? 'bg-yellow-300 cursor-not-allowed'
-                : 'bg-yellow-600 hover:bg-yellow-700'}`}
-          >
-            Request Review
-          </button>
-          <button
-            onClick={() => handleStatusChange('escalated')}
-            disabled={ticket.status === 'escalated'}
-            className={`px-4 py-2 rounded-md text-white font-medium
-              ${ticket.status === 'escalated'
-                ? 'bg-red-300 cursor-not-allowed'
-                : 'bg-red-600 hover:bg-red-700'}`}
-          >
-            Escalate
-          </button>
-          <button
-            onClick={() => handleStatusChange('resolved')}
-            disabled={ticket.status === 'resolved'}
-            className={`px-4 py-2 rounded-md text-white font-medium
-              ${ticket.status === 'resolved'
-                ? 'bg-green-300 cursor-not-allowed'
-                : 'bg-green-600 hover:bg-green-700'}`}
-          >
-            Resolve
-          </button>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Update Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant={ticket.status === 'in_progress' ? 'outline' : 'default'}
+              onClick={() => handleStatusChange('in_progress')}
+              disabled={ticket.status === 'in_progress'}
+            >
+              Start Progress
+            </Button>
+            <Button
+              variant={ticket.status === 'under_review' ? 'outline' : 'warning'}
+              onClick={() => handleStatusChange('under_review')}
+              disabled={ticket.status === 'under_review'}
+            >
+              Request Review
+            </Button>
+            <Button
+              variant={ticket.status === 'escalated' ? 'outline' : 'destructive'}
+              onClick={() => handleStatusChange('escalated')}
+              disabled={ticket.status === 'escalated'}
+            >
+              Escalate
+            </Button>
+            <Button
+              variant={ticket.status === 'resolved' ? 'outline' : 'success'}
+              onClick={() => handleStatusChange('resolved')}
+              disabled={ticket.status === 'resolved'}
+            >
+              Resolve
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Assignment Actions */}
-      <div className="bg-white shadow rounded-lg p-4">
-        <h3 className="text-lg font-medium mb-4">Assignment</h3>
-        {isAssigning ? (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Agent ID</label>
-              <input
-                type="text"
-                value={newAgentId}
-                onChange={(e) => setNewAgentId(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
+      <Card>
+        <CardHeader>
+          <CardTitle>Assignment</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isAssigning ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="agentId">Agent ID</Label>
+                <Input
+                  id="agentId"
+                  value={newAgentId}
+                  onChange={(e) => setNewAgentId(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="teamId">Team ID</Label>
+                <Input
+                  id="teamId"
+                  value={newTeamId}
+                  onChange={(e) => setNewTeamId(e.target.value)}
+                />
+              </div>
+              <div className="flex space-x-2">
+                <Button onClick={handleAssignment}>
+                  Confirm Assignment
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setIsAssigning(false);
+                    setNewAgentId('');
+                    setNewTeamId('');
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Team ID</label>
-              <input
-                type="text"
-                value={newTeamId}
-                onChange={(e) => setNewTeamId(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={handleAssignment}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Confirm Assignment
-              </button>
-              <button
-                onClick={() => {
-                  setIsAssigning(false);
-                  setNewAgentId('');
-                  setNewTeamId('');
-                }}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setIsAssigning(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Assign Ticket
-          </button>
-        )}
-      </div>
+          ) : (
+            <Button onClick={() => setIsAssigning(true)}>
+              Assign Ticket
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Watcher Actions */}
-      <div className="bg-white shadow rounded-lg p-4">
-        <h3 className="text-lg font-medium mb-4">Watchers</h3>
-        <div className="space-y-4">
-          {ticket.watchers.map((watcher) => (
-            <div key={watcher.watcher_id} className="flex justify-between items-center">
-              <span>
-                {watcher.watcher_type}: {watcher.watcher_id}
-              </span>
-              <button
-                onClick={() => handleRemoveWatcher(watcher.watcher_id)}
-                className="px-2 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200"
+      <Card>
+        <CardHeader>
+          <CardTitle>Watchers</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {ticket.watchers.map((watcher) => (
+              <div key={watcher.watcher_id} className="flex justify-between items-center">
+                <Badge variant="secondary">
+                  {watcher.watcher_type}: {watcher.watcher_id}
+                </Badge>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleRemoveWatcher(watcher.watcher_id)}
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => handleAddWatcher('AGENT_ID', 'agent')}
               >
-                Remove
-              </button>
+                Add Agent Watcher
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleAddWatcher('TEAM_ID', 'team')}
+              >
+                Add Team Watcher
+              </Button>
             </div>
-          ))}
-          <div className="flex space-x-2">
-            <button
-              onClick={() => handleAddWatcher('AGENT_ID', 'agent')}
-              className="px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200"
-            >
-              Add Agent Watcher
-            </button>
-            <button
-              onClick={() => handleAddWatcher('TEAM_ID', 'team')}
-              className="px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200"
-            >
-              Add Team Watcher
-            </button>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 } 

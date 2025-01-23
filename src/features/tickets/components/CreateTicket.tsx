@@ -1,6 +1,18 @@
 import React, { useState } from 'react';
 import { useTicket } from '../hooks/useTicket';
 import type { CreateTicketDTO } from '../types/ticket.types';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+  Button,
+  Input,
+  Label,
+  Badge,
+  Textarea,
+} from '@/shared/components';
 
 interface CreateTicketProps {
   onSuccess?: () => void;
@@ -51,105 +63,100 @@ export function CreateTicket({ onSuccess, onCancel }: CreateTicketProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 bg-white shadow rounded-lg p-6">
-      <h2 className="text-2xl font-bold mb-6">Create New Ticket</h2>
+    <Card>
+      <form onSubmit={handleSubmit}>
+        <CardHeader>
+          <CardTitle>Create New Ticket</CardTitle>
+        </CardHeader>
 
-      {error && (
-        <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
-          {error}
-        </div>
-      )}
+        <CardContent className="space-y-6">
+          {error && (
+            <div className="bg-destructive/10 text-destructive p-4 rounded-md">
+              {error}
+            </div>
+          )}
 
-      {/* Title Input */}
-      <div>
-        <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-          Title
-        </label>
-        <input
-          type="text"
-          id="title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          placeholder="Enter ticket title"
-          required
-        />
-      </div>
+          {/* Title Input */}
+          <div className="space-y-2">
+            <Label htmlFor="title">Title</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter ticket title"
+              required
+            />
+          </div>
 
-      {/* Description Input */}
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-          Description
-        </label>
-        <textarea
-          id="description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={4}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          placeholder="Enter ticket description"
-          required
-        />
-      </div>
+          {/* Description Input */}
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              placeholder="Enter ticket description"
+              required
+            />
+          </div>
 
-      {/* Categories Input */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Categories
-        </label>
-        <div className="flex flex-wrap gap-2 mb-2">
-          {categories.map((category) => (
-            <span
-              key={category}
-              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-            >
-              {category}
-              <button
+          {/* Categories Input */}
+          <div className="space-y-2">
+            <Label>Categories</Label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {categories.map((category) => (
+                <Badge
+                  key={category}
+                  variant="secondary"
+                  className="flex items-center gap-1"
+                >
+                  {category}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0 hover:bg-transparent"
+                    onClick={() => handleRemoveCategory(category)}
+                  >
+                    ×
+                  </Button>
+                </Badge>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                placeholder="Add a category"
+              />
+              <Button
                 type="button"
-                onClick={() => handleRemoveCategory(category)}
-                className="ml-2 text-blue-600 hover:text-blue-800"
+                variant="secondary"
+                onClick={handleAddCategory}
               >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newCategory}
-            onChange={(e) => setNewCategory(e.target.value)}
-            className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="Add a category"
-          />
-          <button
-            type="button"
-            onClick={handleAddCategory}
-            className="px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200"
-          >
-            Add
-          </button>
-        </div>
-      </div>
+                Add
+              </Button>
+            </div>
+          </div>
+        </CardContent>
 
-      {/* Action Buttons */}
-      <div className="flex justify-end space-x-3 pt-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={isLoading}
-          className={`px-4 py-2 bg-blue-600 text-white rounded-md
-            ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
-        >
-          {isLoading ? 'Creating...' : 'Create Ticket'}
-        </button>
-      </div>
-    </form>
+        <CardFooter className="flex justify-end space-x-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Creating...' : 'Create Ticket'}
+          </Button>
+        </CardFooter>
+      </form>
+    </Card>
   );
 } 

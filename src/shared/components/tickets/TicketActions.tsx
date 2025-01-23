@@ -1,22 +1,41 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import type { Database } from '@/types/database.types'
+import { useTicket } from '@/features/tickets/hooks/useTicket'
+import type { TicketStatus } from '@/features/tickets/types/ticket.types'
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Button,
+  Input,
+  Label,
+  Badge,
+} from '@/shared/components'
 
 type Ticket = Database['public']['Tables']['tickets']['Row']
 
 interface TicketActionsProps {
-  ticket: Ticket
-  onAssign?: () => void
-  onResolve?: () => void
-  onDelete?: () => void
+  ticketId: string
+  onActionComplete?: () => void
 }
 
-export function TicketActions({ 
-  ticket, 
-  onAssign, 
-  onResolve, 
-  onDelete 
-}: TicketActionsProps) {
+export function TicketActions({ ticketId, onActionComplete }: TicketActionsProps) {
+  const [isAssigning, setIsAssigning] = useState(false)
+  const [newAgentId, setNewAgentId] = useState('')
+  const [newTeamId, setNewTeamId] = useState('')
+  
+  const {
+    ticket,
+    isLoading,
+    error,
+    updateStatus,
+    assignTicket,
+    addWatcher,
+    removeWatcher
+  } = useTicket(ticketId)
+
   const { 
     isAdmin,
     isAgent,
@@ -35,36 +54,40 @@ export function TicketActions({
   const showResolveButton = canManage && !ticket.status.includes('resolved')
   const showDeleteButton = isAdmin
 
+  if (isLoading) return <div className="text-muted-foreground">Loading actions...</div>
+  if (error) return <div className="text-destructive">Error loading actions: {error.message}</div>
+  if (!ticket) return null
+
   return (
     <div className="flex gap-2">
-      {showAssignButton && onAssign && (
-        <button
-          onClick={onAssign}
-          className="btn btn-primary"
+      {showAssignButton && onActionComplete && (
+        <Button
+          onClick={onActionComplete}
+          variant="default"
         >
           {isUnassigned ? 'Assign Ticket' : 'Reassign'}
-        </button>
+        </Button>
       )}
 
-      {showResolveButton && onResolve && (
-        <button
-          onClick={onResolve}
-          className="btn btn-success"
+      {showResolveButton && onActionComplete && (
+        <Button
+          onClick={onActionComplete}
+          variant="default"
         >
           Resolve Ticket
-        </button>
+        </Button>
       )}
 
-      {showDeleteButton && onDelete && (
-        <button
-          onClick={onDelete}
-          className="btn btn-danger"
+      {showDeleteButton && onActionComplete && (
+        <Button
+          onClick={onActionComplete}
+          variant="destructive"
         >
           Delete Ticket
-        </button>
+        </Button>
       )}
 
-      <div className="text-sm text-gray-500">
+      <div className="text-sm text-muted-foreground">
         Status: {ticket.status}
       </div>
     </div>

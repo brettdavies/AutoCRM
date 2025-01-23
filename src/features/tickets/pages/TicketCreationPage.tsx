@@ -1,21 +1,21 @@
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/shared/components/PageHeader';
-import { Panel } from '@/shared/components/Panel';
+import { Card } from '@/shared/components';
 import { TicketForm } from '../components/TicketForm';
 import { useTicketForm } from '../hooks/useTicketForm';
 import { useTicket } from '../hooks/useTicket';
 import logger from '@/shared/utils/logger.utils';
-import { useNavigate } from 'react-router-dom';
 import { ticketRoutes } from '../routes';
+import type { TicketCreationForm } from '../types/ticket.types';
 
 export function TicketCreationPage() {
   const form = useTicketForm();
   const { createTicket } = useTicket();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (formData: TicketCreationForm) => {
     logger.info('[TicketCreationPage] Starting ticket submission', {
-      formData: form.formData
+      formData
     });
 
     try {
@@ -23,24 +23,24 @@ export function TicketCreationPage() {
       logger.debug('[TicketCreationPage] Validating form data');
 
       // Basic validation
-      if (!form.formData.title.trim()) {
+      if (!formData.title.trim()) {
         logger.warn('[TicketCreationPage] Title is required');
         form.setErrors({ title: 'Title is required' });
         return;
       }
 
-      if (!form.formData.team_id) {
+      if (!formData.team_id) {
         logger.warn('[TicketCreationPage] Team selection is required');
         form.setErrors({ team_id: 'Team selection is required' });
         return;
       }
 
       logger.debug('[TicketCreationPage] Form validation passed, creating ticket');
-      const ticket = await createTicket(form.formData);
+      const ticket = await createTicket(formData);
       
       logger.info('[TicketCreationPage] Ticket created successfully', {
         ticketId: ticket.id,
-        title: form.formData.title
+        title: formData.title
       });
 
       // Use React Router navigation with correct route
@@ -56,20 +56,17 @@ export function TicketCreationPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <div className="space-y-4">
       <PageHeader
-        title="Create New Ticket"
-        description="Submit a new support request"
+        title="Create Ticket"
+        description="Create a new support ticket"
         backLink={ticketRoutes.list}
       />
-      <Panel className="mt-6">
-        <div className="p-6">
-          <TicketForm
-            {...form}
-            onSubmit={handleSubmit}
-          />
-        </div>
-      </Panel>
+      <Card className="p-6">
+        <TicketForm
+          onSubmit={handleSubmit}
+        />
+      </Card>
     </div>
   );
 }

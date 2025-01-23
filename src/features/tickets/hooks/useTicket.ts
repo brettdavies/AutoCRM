@@ -8,36 +8,47 @@ import type {
 } from '@/features/tickets/types/ticket.types';
 import { useEffect } from 'react';
 import logger from '@/shared/utils/logger.utils';
+import { supabase } from '@/core/supabase/client';
 
-export function useTicket(ticketId?: string) {
+export function useTicket(ticketId: string) {
   const queryClient = useQueryClient();
 
-  // Get ticket query
-  const {
-    data: ticket,
-    isLoading,
-    error
-  } = useQuery<TicketWithRelations | null>({
+  // Set up real-time subscription
+  useEffect(() => {
+    if (!ticketId) return;
+
+    logger.debug('useTicket: Setting up real-time subscription for ticket:', { ticketId });
+    
+    const subscription = supabase
+      .channel(`ticket:${ticketId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tickets',
+          filter: `id=eq.${ticketId}`
+        },
+        (payload) => {
+          // Invalidate and refetch
+          queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      logger.debug('useTicket: Cleaning up subscription for ticket:', { ticketId });
+      subscription.unsubscribe();
+    };
+  }, [ticketId]); // Only re-run if ticketId changes
+
+  // Fetch ticket data
+  const { data: ticket, isLoading, error } = useQuery({
     queryKey: ['ticket', ticketId],
-    queryFn: async () => {
-      logger.debug('[useTicket] Fetching ticket', { ticketId });
-      if (!ticketId) return null;
-      
-      try {
-        const result = await TicketService.getTicket(ticketId);
-        logger.debug('[useTicket] Received ticket data', { 
-          ticketId,
-          status: result.status,
-          teamId: result.team?.id,
-          agentId: result.assigned_agent?.id
-        });
-        return result;
-      } catch (error) {
-        logger.error('[useTicket] Failed to fetch ticket', { ticketId, error });
-        throw error;
-      }
-    },
-    enabled: !!ticketId
+    queryFn: () => TicketService.getTicket(ticketId),
+    enabled: !!ticketId,
+    staleTime: 1000 * 60, // Consider data fresh for 1 minute
+    cacheTime: 1000 * 60 * 5 // Keep in cache for 5 minutes
   });
 
   // Create ticket mutation
@@ -148,22 +159,6 @@ export function useTicket(ticketId?: string) {
       queryClient.setQueryData(['ticket', updatedTicket.id], updatedTicket);
     }
   });
-
-  // Subscribe to real-time updates
-  useEffect(() => {
-    if (!ticketId) return;
-
-    console.log('useTicket: Setting up real-time subscription for ticket:', ticketId);
-    const subscription = TicketService.subscribeToTicket(ticketId, (updatedTicket) => {
-      console.log('useTicket: Received real-time update:', updatedTicket);
-      queryClient.setQueryData(['ticket', ticketId], updatedTicket);
-    });
-
-    return () => {
-      console.log('useTicket: Cleaning up subscription for ticket:', ticketId);
-      subscription.unsubscribe();
-    };
-  }, [ticketId, queryClient]);
 
   return {
     ticket,

@@ -1,78 +1,126 @@
-import { Button, TextField } from '@/shared/components';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  Button,
+  Textarea,
+} from '@/shared/components';
 import { TeamSelect } from './TeamSelect';
 
-interface TicketCreationForm {
-  title: string;
-  description: string;
-  team_id?: string;
-  priority?: string;
-  category_ids: string[];
-  attachments?: File[];
-}
+const ticketFormSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  description: z.string(),
+  team_id: z.string().optional(),
+  priority: z.string().optional(),
+  category_ids: z.array(z.string()).default([]),
+  attachments: z.array(z.instanceof(File)).optional(),
+});
+
+type TicketCreationForm = z.infer<typeof ticketFormSchema>;
 
 interface TicketFormProps {
-  formData: TicketCreationForm;
-  errors: Partial<Record<keyof TicketCreationForm, string>>;
-  isSubmitting: boolean;
-  updateField: <K extends keyof TicketCreationForm>(field: K, value: TicketCreationForm[K]) => void;
-  onSubmit: (e: React.FormEvent) => void;
-  onCancel: () => void;
+  onSubmit: (data: TicketCreationForm) => void;
+  initialData?: Partial<TicketCreationForm>;
 }
 
-export function TicketForm({ 
-  formData, 
-  errors, 
-  isSubmitting, 
-  updateField, 
-  onSubmit, 
-  onCancel 
-}: TicketFormProps) {
+export function TicketForm({ onSubmit, initialData = {} }: TicketFormProps) {
+  const form = useForm<TicketCreationForm>({
+    resolver: zodResolver(ticketFormSchema),
+    defaultValues: {
+      title: initialData.title || '',
+      description: initialData.description || '',
+      team_id: initialData.team_id,
+      priority: initialData.priority,
+      category_ids: initialData.category_ids || [],
+      attachments: initialData.attachments,
+    },
+  });
+
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      <TextField
-        id="title"
-        name="title"
-        label="Title"
-        value={formData.title}
-        onChange={(e) => updateField('title', e.target.value)}
-        error={errors.title}
-        required
-      />
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }: { field: any }) => (
+            <FormItem>
+              <FormLabel>Title</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter ticket title" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <TeamSelect
-        value={formData.team_id}
-        onChange={(value) => updateField('team_id', value)}
-        error={errors.team_id}
-      />
+        <FormField
+          control={form.control}
+          name="team_id"
+          render={({ field }: { field: any }) => (
+            <FormItem>
+              <FormLabel>Team</FormLabel>
+              <FormControl>
+                <TeamSelect
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      {/* Rich text editor coming soon */}
-      <div className="h-48 border rounded-md p-4 bg-gray-50">
-        Rich text editor coming soon
-      </div>
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }: { field: any }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder="Enter ticket description"
+                  className="min-h-[100px]"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      {/* Category selection coming soon */}
-      <div className="h-24 border rounded-md p-4 bg-gray-50">
-        Category selection coming soon
-      </div>
+        {/* Rich text editor coming soon */}
+        <div className="h-48 border rounded-md p-4 bg-muted">
+          Rich text editor coming soon
+        </div>
 
-      {/* File upload coming soon */}
-      <div className="h-24 border rounded-md p-4 bg-gray-50">
-        File upload coming soon
-      </div>
+        {/* Category selection coming soon */}
+        <div className="h-24 border rounded-md p-4 bg-muted">
+          Category selection coming soon
+        </div>
 
-      {/* Priority selection coming soon */}
-      <div className="h-24 border rounded-md p-4 bg-gray-50">
-        Priority selection coming soon
-      </div>
+        {/* File upload coming soon */}
+        <div className="h-24 border rounded-md p-4 bg-muted">
+          File upload coming soon
+        </div>
 
-      <div className="flex justify-end space-x-4">
-        <Button onClick={onCancel} variant="secondary">
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Creating...' : 'Create Ticket'}
-        </Button>
-      </div>
-    </form>
+        {/* Priority selection coming soon */}
+        <div className="h-24 border rounded-md p-4 bg-muted">
+          Priority selection coming soon
+        </div>
+
+        <div className="flex justify-end space-x-4">
+          <Button type="submit">
+            Create Ticket
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 } 

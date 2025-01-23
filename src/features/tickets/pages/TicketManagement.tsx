@@ -1,9 +1,9 @@
-import { useRef, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useRef, useEffect, useState, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { TicketList } from '../components/TicketList'
 import { TicketDetails } from '../components/TicketDetails'
 import { useAuth } from '@/features/auth'
-import { ResponsivePanel, Button, Panel, ScrollableContainer } from '@/shared/components'
+import { ResponsivePanel, Button, ScrollArea, Card } from '@/shared/components'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import logger from '@/shared/utils/logger.utils'
 import { ticketRoutes } from '../routes'
@@ -88,100 +88,109 @@ export function TicketManagement() {
     }
   }, [])
 
-  const handleTicketClick = (ticketId: string) => {
+  const handleTicketClick = useCallback((ticketId: string) => {
     setPreviewTicketId(ticketId === previewTicketId ? null : ticketId);
-  }
+  }, [previewTicketId]);
 
-  const handleViewDetails = () => {
+  const handleViewDetails = useCallback(() => {
     if (previewTicketId) {
+      logger.debug('[TicketManagement] Navigating to ticket details', { ticketId: previewTicketId });
       navigate(ticketRoutes.view(previewTicketId));
     }
-  }
+  }, [previewTicketId, navigate]);
 
-  const handleClosePreview = () => {
+  const handleClosePreview = useCallback(() => {
     setPreviewTicketId(null);
-  }
+  }, []);
+
+  // Memoize the ticket lists
+  const myTicketsList = useMemo(() => (
+    <ResponsivePanel
+      mobileHeight="h-[calc(40vh-6rem)]"
+      desktopHeight="lg:h-[calc(40vh-6rem)]"
+      minHeight="min-h-[200px]"
+    >
+      <ScrollArea className="h-full">
+        <TicketList
+          teamId={undefined}
+          agentId={session?.user?.id}
+          onTicketClick={handleTicketClick}
+          title="My Tickets"
+          excludeStatus="unassigned"
+          hideStatusFilter={false}
+          selectedTicketId={previewTicketId}
+        />
+      </ScrollArea>
+    </ResponsivePanel>
+  ), [session?.user?.id, handleTicketClick, previewTicketId]);
+
+  const unassignedTicketsList = useMemo(() => (
+    <ResponsivePanel
+      mobileHeight="h-[calc(40vh-6rem)]"
+      desktopHeight="lg:h-[calc(40vh-6rem)]"
+      minHeight="min-h-[200px]"
+    >
+      <ScrollArea className="h-full">
+        <TicketList
+          teamId={undefined}
+          agentId={undefined}
+          onTicketClick={handleTicketClick}
+          title="Unassigned Tickets"
+          status="unassigned"
+          hideStatusFilter={true}
+          selectedTicketId={previewTicketId}
+        />
+      </ScrollArea>
+    </ResponsivePanel>
+  ), [handleTicketClick, previewTicketId]);
+
+  // Memoize the preview panel
+  const previewPanel = useMemo(() => {
+    if (!previewTicketId) return null;
+
+    return (
+      <Card className="h-[calc(80vh-8rem)]">
+        <div className="p-4 border-b border-border flex justify-between items-center">
+          <h2 className="text-lg font-semibold">Ticket Preview</h2>
+          <Button variant="default" onClick={handleClosePreview}>
+            <XMarkIcon className="h-5 w-5" />
+          </Button>
+        </div>
+        <ScrollArea className="h-[calc(100%-5rem)]">
+          <div className="space-y-4">
+            <TicketDetails ticketId={previewTicketId} />
+            <div className="flex justify-end px-4 pb-4">
+              <Button variant="default" onClick={handleViewDetails}>
+                View Full Details
+              </Button>
+            </div>
+          </div>
+        </ScrollArea>
+      </Card>
+    );
+  }, [previewTicketId, handleClosePreview, handleViewDetails]);
 
   return (
-    <div className="space-y-6">
-      {/* Header with Create Button */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">Ticket Management</h1>
-          <div className="text-sm text-gray-500">
-            Logged in as: {session?.user?.email}
-          </div>
-        </div>
-        <Link to={ticketRoutes.create}>
-          <Button variant="primary">Create Ticket</Button>
-        </Link>
+    <div className="h-full flex flex-col space-y-4 p-4">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Ticket Management</h1>
+        <Button variant="default" onClick={() => navigate(ticketRoutes.create)}>
+          Create Ticket
+        </Button>
       </div>
 
-      {/* Main Content */}
-      <div className={`grid gap-6 transition-all duration-200 ${previewTicketId ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-2'}`}>
-        {/* Left Column - Ticket Lists */}
-        <div className={`space-y-6 ${previewTicketId ? 'lg:col-span-2' : 'lg:col-span-full'}`}>
-          {/* My Tickets */}
-          <ResponsivePanel>
-            <div className="h-[calc(40vh-4rem)] overflow-hidden">
-              <ScrollableContainer>
-                <TicketList
-                  teamId={undefined}
-                  agentId={session?.user?.id}
-                  onTicketClick={handleTicketClick}
-                  title="My Tickets"
-                  excludeStatus="unassigned"
-                  hideStatusFilter={false}
-                  selectedTicketId={previewTicketId}
-                />
-              </ScrollableContainer>
-            </div>
-          </ResponsivePanel>
-
-          {/* Unassigned Tickets */}
-          <ResponsivePanel>
-            <div className="h-[calc(40vh-4rem)] overflow-hidden">
-              <ScrollableContainer>
-                <TicketList
-                  teamId={undefined}
-                  agentId={undefined}
-                  onTicketClick={handleTicketClick}
-                  title="Unassigned Tickets"
-                  status="unassigned"
-                  hideStatusFilter={true}
-                  selectedTicketId={previewTicketId}
-                />
-              </ScrollableContainer>
-            </div>
-          </ResponsivePanel>
+      <div className={`flex-1 grid gap-2 ${
+        previewTicketId 
+          ? 'grid-cols-1 lg:grid-cols-2' 
+          : 'grid-cols-1'
+      }`}>
+        <div className="space-y-2">
+          {myTicketsList}
+          {unassignedTicketsList}
         </div>
 
-        {/* Right Column - Ticket Preview */}
-        {previewTicketId && (
-          <Panel className="h-[calc(80vh-4rem)] overflow-hidden">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Ticket Preview</h2>
-              <button
-                onClick={handleClosePreview}
-                className="p-1 rounded-md hover:bg-gray-100"
-                aria-label="Close preview"
-              >
-                <XMarkIcon className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
-            <ScrollableContainer>
-              <div className="space-y-4">
-                <TicketDetails ticketId={previewTicketId} />
-                <div className="flex justify-end px-4 pb-4">
-                  <Button variant="primary" onClick={handleViewDetails}>
-                    View Full Details
-                  </Button>
-                </div>
-              </div>
-            </ScrollableContainer>
-          </Panel>
-        )}
+        {previewPanel}
       </div>
     </div>
-  )
+  );
 } 

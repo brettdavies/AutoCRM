@@ -212,7 +212,7 @@ export class TicketService {
       title: dto.title,
       teamId: dto.team_id,
       categoryCount: dto.category_ids.length,
-      hasAttachments: dto.attachments?.length > 0
+      hasAttachments: (dto.attachments ?? []).length > 0
     });
 
     try {

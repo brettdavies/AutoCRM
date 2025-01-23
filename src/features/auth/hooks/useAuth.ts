@@ -1,6 +1,7 @@
 import { useAuth as useAuthProvider } from '../components/AuthProvider'
 import type { Profile } from '../types/auth.types'
-import { useSessionContext } from '@supabase/auth-helpers-react'
+import { supabase } from '@/core/supabase'
+import type { UserRole } from '@/core/supabase/types/database.types'
 
 /**
  * @function useProfile
@@ -67,19 +68,80 @@ export function useTeamAccess(teamId: string): boolean {
 }
 
 export function useAuth() {
-  const { session } = useSessionContext();
-  const profile = useProfile(session?.user?.id);
+  const { session, profile } = useAuthProvider()
 
-  const isAdmin = session?.user?.user_metadata?.role === 'admin';
-  const isAgent = session?.user?.user_metadata?.role === 'agent';
-  const isCustomer = session?.user?.user_metadata?.role === 'customer';
+  const signInWithDemo = async (role: UserRole) => {
+    const demoCredentials = {
+      admin: {
+        email: 'admin@example.com',
+        password: 'admin123'
+      },
+      agent: {
+        email: 'tech_agent1@example.com',
+        password: 'agent123'
+      },
+      customer: {
+        email: 'customer1@example.com',
+        password: 'customer123'
+      }
+    }
+
+    const { error } = await supabase.auth.signInWithPassword(demoCredentials[role])
+    if (error) throw error
+  }
+
+  const signIn = async ({ email, password }: { email: string; password: string }) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+    if (error) throw error
+  }
+
+  const signInWithMagicLink = async (email: string) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`
+      }
+    })
+    if (error) throw error
+  }
+
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`
+    })
+    if (error) throw error
+  }
+
+  const signUp = async ({ email, password, full_name }: { email: string; password: string; full_name: string }) => {
+    const { error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name,
+          role: 'customer' // Default role for new signups
+        },
+        emailRedirectTo: `${window.location.origin}/auth/callback`
+      }
+    })
+    if (signUpError) throw signUpError
+  }
 
   return {
     session,
     profile,
-    isAdmin,
-    isAgent,
-    isCustomer,
-    isAuthenticated: !!session?.user
-  };
+    signOut: () => supabase.auth.signOut(),
+    signInWithDemo,
+    signIn,
+    signInWithMagicLink,
+    resetPassword,
+    signUp,
+    isAdmin: profile?.role === 'admin',
+    isAgent: profile?.role === 'agent',
+    isCustomer: profile?.role === 'customer',
+    isAuthenticated: !!session
+  }
 } 

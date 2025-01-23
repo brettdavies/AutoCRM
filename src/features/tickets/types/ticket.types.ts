@@ -91,8 +91,9 @@ export interface TicketWithRelations extends Omit<Ticket, 'assigned_agent_id'> {
 export interface CreateTicketDTO {
   title: string;
   description: string;
-  category_ids: string[];
   team_id?: string;
+  category_ids: string[];
+  attachments?: File[];
 }
 
 /** Data allowed to be updated on a ticket */

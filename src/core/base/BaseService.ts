@@ -1,4 +1,4 @@
-import logger from '@/utils/logger'
+import logger from '@/shared/utils/logger.utils'
 import { Database } from '@/types/database.types'
 
 export abstract class BaseService {

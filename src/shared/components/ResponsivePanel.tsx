@@ -1,27 +1,25 @@
-import { ReactNode } from 'react';
-import { Panel } from './Panel';
-import { ScrollableContainer } from './ScrollableContainer';
+import { ReactNode } from 'react'
+import { Card } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 
 interface ResponsivePanelProps {
-  children: ReactNode;
-  mobileHeight?: string;
-  desktopHeight?: string;
-  minHeight?: string;
-  className?: string;
+  children: ReactNode
+  className?: string
+  mobileHeight?: string
+  desktopHeight?: string
+  minHeight?: string
 }
 
-export function ResponsivePanel({ 
-  children, 
-  mobileHeight = "h-[400px]",
-  desktopHeight = "lg:h-[calc(50%-1rem)]",
-  minHeight = "min-h-[220px]",
-  className = ""
+export function ResponsivePanel({
+  children,
+  className,
+  mobileHeight = 'h-[calc(40vh-6rem)]',
+  desktopHeight = 'lg:h-[calc(40vh-6rem)]',
+  minHeight = 'min-h-[200px]'
 }: ResponsivePanelProps) {
   return (
-    <Panel className={`${mobileHeight} ${desktopHeight} ${minHeight} ${className}`}>
-      <ScrollableContainer>
-        {children}
-      </ScrollableContainer>
-    </Panel>
-  );
+    <Card className={cn(mobileHeight, desktopHeight, minHeight, className)}>
+      {children}
+    </Card>
+  )
 } 

@@ -1,5 +1,5 @@
 import { supabase } from '@/supabaseClient'
-import logger from '@/utils/logger'
+import logger from '@/shared/utils/logger.utils'
 
 export abstract class BaseApiClient {
   protected logger = logger.child({ client: this.constructor.name })
