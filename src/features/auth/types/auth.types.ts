@@ -47,15 +47,19 @@ export interface AuthContextValue {
   // Actions
   signOut: () => Promise<void>
   refreshSession: () => Promise<void>
+  signInWithOAuth: (provider: OAuthProvider) => Promise<void>
+  unlinkOAuthProvider: (provider: OAuthProvider) => Promise<void>
 }
 
 /**
  * @interface Profile
- * @description Domain model for user profile, extending database profile with metadata
+ * @extends {Omit<ProfileRow, 'oauth_metadata'>}
+ * @description User profile with typed OAuth metadata
  */
-export interface Profile extends ProfileRow {
-  // Additional fields from metadata
-  team_id: string | null
+export interface Profile extends Omit<ProfileRow, 'oauth_metadata'> {
+  oauth_provider?: OAuthProvider
+  avatar_url?: string
+  oauth_metadata: OAuthMetadata
 }
 
 // Role type definition
@@ -130,4 +134,30 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canViewInternalNotes: true,
     canManageKnowledgeBase: true
   }
+}
+
+export type OAuthProvider = 'google' | 'github';
+
+export interface OAuthMetadata {
+  provider: OAuthProvider;
+  provider_id: string;
+  linked_providers?: {
+    [key in OAuthProvider]?: {
+      provider_id: string;
+      email: string;
+      linked_at: number;
+    }
+  }
+}
+
+/**
+ * @interface OAuthError
+ * @description OAuth specific error types
+ */
+export interface OAuthError {
+  type: 'oauth_error';
+  code: 'user_cancelled' | 'provider_error' | 'network_error';
+  message: string;
+  provider: OAuthProvider;
+  originalError?: unknown;
 } 

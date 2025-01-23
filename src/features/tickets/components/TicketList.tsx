@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useTickets } from '../hooks/useTickets';
-import type { TicketStatus } from '../types/ticket.types';
+import type { TicketStatus, TicketWithRelations } from '../types/ticket.types';
 import logger from '@/shared/utils/logger.utils';
 import { formatDate } from '@/shared/utils/date.utils';
 import {
@@ -19,10 +18,7 @@ import {
 } from '@/shared/components';
 
 export interface TicketListProps {
-  teamId?: string | undefined;
-  agentId?: string | undefined;
-  status?: TicketStatus;
-  excludeStatus?: TicketStatus;
+  tickets: TicketWithRelations[];
   onTicketClick: (ticketId: string) => void;
   title: string;
   hideStatusFilter?: boolean;
@@ -30,10 +26,7 @@ export interface TicketListProps {
 }
 
 export function TicketList({
-  teamId,
-  agentId,
-  status,
-  excludeStatus,
+  tickets,
   onTicketClick,
   title,
   hideStatusFilter = false,
@@ -41,7 +34,7 @@ export function TicketList({
 }: TicketListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
-  const [statusFilter, setStatusFilter] = useState<TicketStatus | undefined>(status);
+  const [statusFilter, setStatusFilter] = useState<TicketStatus | undefined>();
 
   const logListDimensions = (phase: string) => {
     const container = containerRef.current?.getBoundingClientRect();
@@ -63,17 +56,6 @@ export function TicketList({
     });
   };
 
-  logger.debug('[TicketList] Rendering with props:', {
-    teamId,
-    agentId,
-    status,
-    excludeStatus,
-    title,
-    hideStatusFilter
-  });
-
-  const { tickets, isLoading, error } = useTickets({ teamId, agentId, status: hideStatusFilter ? status : statusFilter });
-
   // Log dimensions when tickets change
   useEffect(() => {
     if (tickets) {
@@ -81,42 +63,10 @@ export function TicketList({
     }
   }, [tickets]);
 
-  logger.debug('[TicketList] Raw tickets from useTickets:', {
-    count: tickets?.length,
-    tickets: tickets?.map(t => ({
-      id: t.id,
-      title: t.title,
-      status: t.status,
-      assigned_agent: t.assigned_agent?.id
-    }))
-  });
-
-  if (isLoading) {
-    logger.debug('[TicketList] Loading tickets...');
-    return <div>Loading tickets...</div>;
-  }
-
-  if (error) {
-    logger.error('[TicketList] Error loading tickets:', error);
-    return <div>Error loading tickets: {error.message}</div>;
-  }
-
-  // Filter out excluded status if specified
-  const filteredTickets = excludeStatus 
-    ? tickets?.filter(ticket => ticket.status !== excludeStatus)
+  // Filter tickets by status if filter is set
+  const filteredTickets = statusFilter
+    ? tickets.filter(ticket => ticket.status === statusFilter)
     : tickets;
-
-  logger.debug('[TicketList] Filtered tickets:', {
-    excludeStatus,
-    beforeCount: tickets?.length,
-    afterCount: filteredTickets?.length,
-    filteredTickets: filteredTickets?.map(t => ({
-      id: t.id,
-      title: t.title,
-      status: t.status,
-      assigned_agent: t.assigned_agent?.id
-    }))
-  });
 
   const getStatusColor = (status: string) => {
     switch (status) {

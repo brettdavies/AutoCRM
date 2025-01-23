@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '@/features/auth/components/AuthProvider'
 import { Auth } from '@/features/auth/components/Auth'
 import { SignUp } from '@/features/auth/components/SignUp'
+import { AuthCallback } from '@/features/auth/components/AuthCallback'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { TicketManagement } from '@/features/tickets/pages/TicketManagement'
@@ -27,6 +28,7 @@ function AppContent() {
     return (
       <Routes>
         <Route path="/auth/signup" element={<SignUp />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="*" element={<Auth />} />
       </Routes>
     )

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import type { AuthContextValue, AuthState, TeamContext, Profile } from '../types/auth.types'
+import type { AuthContextValue, AuthState, TeamContext, Profile, OAuthProvider, OAuthError } from '../types/auth.types'
 import type { ProfileRow } from '@/core/supabase/types/database.types'
 import type { Session } from '@supabase/supabase-js'
 
@@ -225,6 +225,59 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
+  const signInWithOAuth = useCallback(async (provider: OAuthProvider) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          }
+        }
+      })
+      
+      if (error) throw error
+      if (!data.url) throw new Error('No OAuth URL returned')
+      
+      // Redirect to provider
+      window.location.href = data.url
+    } catch (error) {
+      console.error('OAuth error:', error)
+      const oauthError: OAuthError = {
+        type: 'oauth_error',
+        code: 'provider_error',
+        message: error instanceof Error ? error.message : 'Failed to initialize OAuth flow',
+        provider,
+        originalError: error
+      }
+      setState(prev => ({ ...prev, error: oauthError }))
+    }
+  }, [])
+
+  const unlinkOAuthProvider = useCallback(async (provider: OAuthProvider) => {
+    if (!session?.user?.id) throw new Error('No authenticated user')
+    
+    try {
+      const { error } = await supabase.rpc('unlink_oauth_account', {
+        user_id: session.user.id,
+        provider
+      })
+      
+      if (error) throw error
+      
+      // Refresh profile data
+      await queryClient.invalidateQueries({ queryKey: ['profile', session.user.id] })
+    } catch (error) {
+      console.error('Failed to unlink provider:', error)
+      setState(prev => ({ 
+        ...prev, 
+        error: new Error('Failed to unlink provider') 
+      }))
+    }
+  }, [session?.user?.id, queryClient])
+
   const value: AuthContextValue = {
     session,
     user: session?.user ?? null,
@@ -232,7 +285,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     team: team ?? null,
     state,
     signOut,
-    refreshSession
+    refreshSession,
+    signInWithOAuth,
+    unlinkOAuthProvider
   }
 
   return (

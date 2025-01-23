@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { TicketList } from '../components/TicketList'
 import { TicketDetails } from '../components/TicketDetails'
 import { useAuth } from '@/features/auth'
+import { useTickets } from '../hooks/useTickets'
 import { ResponsivePanel, Button, ScrollArea, Card } from '@/shared/components'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import logger from '@/shared/utils/logger.utils'
@@ -12,6 +13,26 @@ export function TicketManagement() {
   const { session } = useAuth()
   const navigate = useNavigate();
   const [previewTicketId, setPreviewTicketId] = useState<string | null>(null);
+  
+  // Fetch all tickets once
+  const { tickets: allTickets, isLoading, error } = useTickets({
+    userId: session?.user?.id,
+    userTeamId: session?.user?.user_metadata?.team_id
+  });
+
+  // Filter tickets for each list
+  const myTickets = useMemo(() => {
+    if (!allTickets) return [];
+    return allTickets.filter(ticket => 
+      ticket.assigned_agent?.id === session?.user?.id && 
+      ticket.status !== 'unassigned'
+    );
+  }, [allTickets, session?.user?.id]);
+
+  const unassignedTickets = useMemo(() => {
+    if (!allTickets) return [];
+    return allTickets.filter(ticket => ticket.status === 'unassigned');
+  }, [allTickets]);
   
   // Refs for dimension tracking
   const gridRef = useRef<HTMLDivElement>(null)
@@ -112,17 +133,15 @@ export function TicketManagement() {
     >
       <ScrollArea className="h-full">
         <TicketList
-          teamId={undefined}
-          agentId={session?.user?.id}
+          tickets={myTickets}
           onTicketClick={handleTicketClick}
           title="My Tickets"
-          excludeStatus="unassigned"
           hideStatusFilter={false}
           selectedTicketId={previewTicketId}
         />
       </ScrollArea>
     </ResponsivePanel>
-  ), [session?.user?.id, handleTicketClick, previewTicketId]);
+  ), [myTickets, handleTicketClick, previewTicketId]);
 
   const unassignedTicketsList = useMemo(() => (
     <ResponsivePanel
@@ -132,17 +151,15 @@ export function TicketManagement() {
     >
       <ScrollArea className="h-full">
         <TicketList
-          teamId={undefined}
-          agentId={undefined}
+          tickets={unassignedTickets}
           onTicketClick={handleTicketClick}
           title="Unassigned Tickets"
-          status="unassigned"
           hideStatusFilter={true}
           selectedTicketId={previewTicketId}
         />
       </ScrollArea>
     </ResponsivePanel>
-  ), [handleTicketClick, previewTicketId]);
+  ), [unassignedTickets, handleTicketClick, previewTicketId]);
 
   // Memoize the preview panel
   const previewPanel = useMemo(() => {
@@ -169,6 +186,16 @@ export function TicketManagement() {
       </Card>
     );
   }, [previewTicketId, handleClosePreview, handleViewDetails]);
+
+  // Show loading state
+  if (isLoading) {
+    return <div className="p-4">Loading tickets...</div>;
+  }
+
+  // Show error state
+  if (error) {
+    return <div className="p-4 text-red-500">Error loading tickets: {error.message}</div>;
+  }
 
   return (
     <div className="h-full flex flex-col space-y-4 p-4">

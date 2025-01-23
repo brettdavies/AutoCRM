@@ -110,6 +110,8 @@ export interface UseTicketsOptions {
   teamId?: string | undefined;
   agentId?: string | undefined;
   status?: TicketStatus | undefined;
+  userId?: string | undefined;
+  userTeamId?: string | undefined;
 }
 
 /** Type guard for Supabase ticket response */

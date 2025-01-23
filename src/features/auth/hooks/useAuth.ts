@@ -68,7 +68,7 @@ export function useTeamAccess(teamId: string): boolean {
 }
 
 export function useAuth() {
-  const { session, profile } = useAuthProvider()
+  const { session, profile, signInWithOAuth } = useAuthProvider()
 
   const signInWithDemo = async (role: UserRole) => {
     const demoCredentials = {
@@ -139,6 +139,7 @@ export function useAuth() {
     signInWithMagicLink,
     resetPassword,
     signUp,
+    signInWithOAuth,
     isAdmin: profile?.role === 'admin',
     isAgent: profile?.role === 'agent',
     isCustomer: profile?.role === 'customer',
