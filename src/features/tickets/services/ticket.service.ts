@@ -127,11 +127,17 @@ export class TicketService {
       } else if (status === 'unassigned') {
         // For unassigned tickets panel, only show unassigned tickets for their team
         logger.debug('[TicketService] Filtering for unassigned team tickets');
+        if (!userTeamId) {
+          throw new Error('Team ID is required for filtering unassigned tickets');
+        }
         query = query
           .is('assigned_agent_id', null)
           .eq('assigned_team_id', userTeamId);
       } else {
         // For other cases, show all accessible tickets
+        if (!userTeamId) {
+          throw new Error('Team ID is required for filtering accessible tickets');
+        }
         const filters = [
           `assigned_agent_id.eq.${userId}`,
           `assigned_team_id.eq.${userTeamId}`
@@ -142,7 +148,7 @@ export class TicketService {
       }
     } else {
       logger.debug('[TicketService] Applying regular user filters');
-      // Regular users can only see tickets they created
+      // Regular users (customers) can only see tickets they created
       query = query.eq('created_by', userId)
                   .order('created_at', { ascending: false });
     }
@@ -223,6 +229,10 @@ export class TicketService {
         userRole: user?.user_metadata?.role
       });
 
+      if (!user?.id) {
+        throw new Error('User must be authenticated to create a ticket');
+      }
+
       // Create the ticket
       logger.debug('[TicketService] Inserting ticket into database');
       const { data: ticket, error } = await supabase
@@ -231,8 +241,8 @@ export class TicketService {
           title: dto.title,
           description: dto.description,
           status: 'unassigned',
-          assigned_team_id: dto.team_id,
-          created_by: user?.id
+          ...(dto.team_id && { assigned_team_id: dto.team_id }),
+          created_by: user.id
         })
         .select(this.TICKET_SELECT)
         .single();
@@ -255,9 +265,14 @@ export class TicketService {
           categories: dto.category_ids
         });
 
+        if (!user?.id) {
+          throw new Error('User must be authenticated to add categories');
+        }
+
         const categories = dto.category_ids.map(category_id => ({
           ticket_id: ticket.id,
           category_id,
+          added_by: user.id
         }));
 
         const { error: categoryError } = await supabase
@@ -339,14 +354,20 @@ export class TicketService {
   static async addWatcher(
     ticketId: string,
     watcherId: string,
-    watcherType: TicketWatcher['watcher_type']
+    watcherType: 'agent' | 'team'
   ): Promise<TicketWithRelations> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.id) {
+      throw new Error('User must be authenticated to add watchers');
+    }
+
     const { error: watcherError } = await supabase
       .from('ticket_watchers')
       .insert({
         ticket_id: ticketId,
         watcher_id: watcherId,
-        watcher_type: watcherType
+        watcher_type: watcherType,
+        added_by: user.id
       });
 
     if (watcherError) throw watcherError;

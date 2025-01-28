@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import type { TicketStatus, TicketWithRelations } from '../types/ticket.types';
 import logger from '@/shared/utils/logger.utils';
 import { formatDate } from '@/shared/utils/date.utils';
@@ -15,7 +15,21 @@ import {
   SelectContent,
   SelectItem,
   Badge,
+  Button,
 } from '@/shared/components';
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+
+type SortField = 'title' | 'status' | 'team' | 'updated_at' | 'created_at' | 'agent';
+type SortOrder = 'asc' | 'desc' | 'off';
+
+const TICKET_STATUSES: TicketStatus[] = [
+  'unassigned',
+  'in_progress',
+  'under_review',
+  'escalated',
+  'resolved',
+  'closed'
+];
 
 export interface TicketListProps {
   tickets: TicketWithRelations[];
@@ -32,41 +46,61 @@ export function TicketList({
   hideStatusFilter = false,
   selectedTicketId = null
 }: TicketListProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const tableRef = useRef<HTMLTableElement>(null);
+  const [sortField, setSortField] = useState<SortField>('title');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [statusFilter, setStatusFilter] = useState<TicketStatus | undefined>();
 
-  const logListDimensions = (phase: string) => {
-    const container = containerRef.current?.getBoundingClientRect();
-    const table = tableRef.current?.getBoundingClientRect();
-    const tableRows = tableRef.current?.querySelectorAll('tr');
-
-    logger.debug(`[TicketList ${title} ${phase}] Dimensions:`, {
-      container: {
-        height: container?.height,
-        scrollHeight: containerRef.current?.scrollHeight,
-        clientHeight: containerRef.current?.clientHeight
-      },
-      table: {
-        height: table?.height,
-        rows: tableRows?.length,
-        scrollHeight: tableRef.current?.scrollHeight,
-        clientHeight: tableRef.current?.clientHeight
-      }
-    });
+  const handleSort = (field: SortField) => {
+    if (field === sortField) {
+      // Cycle through sort orders: asc -> desc -> off
+      setSortOrder(current => {
+        switch (current) {
+          case 'asc': return 'desc';
+          case 'desc': return 'off';
+          case 'off': return 'asc';
+        }
+      });
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
   };
 
-  // Log dimensions when tickets change
-  useEffect(() => {
-    if (tickets) {
-      logListDimensions('After Data Load');
-    }
-  }, [tickets]);
+  const getSortIcon = (field: SortField) => {
+    if (field !== sortField || sortOrder === 'off') return <ArrowUpDown className="h-4 w-4" />;
+    return sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
+  };
 
-  // Filter tickets by status if filter is set
-  const filteredTickets = statusFilter
-    ? tickets.filter(ticket => ticket.status === statusFilter)
-    : tickets;
+  // Filter and sort tickets
+  const sortedTickets = [...tickets]
+    .filter(ticket => !statusFilter || ticket.status === statusFilter)
+    .sort((a, b) => {
+      if (sortOrder === 'off') return 0;
+
+      let comparison = 0;
+      switch (sortField) {
+        case 'title':
+          comparison = a.title.localeCompare(b.title);
+          break;
+        case 'status':
+          comparison = a.status.localeCompare(b.status);
+          break;
+        case 'team':
+          comparison = (a.team?.name || '').localeCompare(b.team?.name || '');
+          break;
+        case 'updated_at':
+          comparison = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+          break;
+        case 'created_at':
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          break;
+        case 'agent':
+          comparison = (a.assigned_agent?.full_name || '').localeCompare(b.assigned_agent?.full_name || '');
+          break;
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -88,66 +122,76 @@ export function TicketList({
   };
 
   return (
-    <div ref={containerRef} className="flex flex-col h-full min-h-0">
-      <div className="flex justify-between items-center mb-4 flex-shrink-0">
-        <h2 className="text-xl font-semibold">{title}</h2>
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">{title}</h2>
         {!hideStatusFilter && (
           <Select
             value={statusFilter || 'all'}
             onValueChange={(value) => setStatusFilter(value === 'all' ? undefined : value as TicketStatus)}
           >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Statuses" />
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="under_review">Under Review</SelectItem>
-              <SelectItem value="escalated">Escalated</SelectItem>
-              <SelectItem value="resolved">Resolved</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
+              {TICKET_STATUSES.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status.replace('_', ' ')}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         )}
       </div>
 
       <div className="flex-1 min-h-0 overflow-hidden">
-        {!filteredTickets?.length ? (
+        {!sortedTickets?.length ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-muted-foreground">No tickets found</div>
           </div>
         ) : (
           <div className="h-full overflow-auto">
-            <Table ref={tableRef}>
+            <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Updated</TableHead>
-                  <TableHead>Agent</TableHead>
+                  <TableHead onClick={() => handleSort('title')} className="cursor-pointer">
+                    Title {getSortIcon('title')}
+                  </TableHead>
+                  <TableHead onClick={() => handleSort('status')} className="cursor-pointer">
+                    Status {getSortIcon('status')}
+                  </TableHead>
+                  <TableHead onClick={() => handleSort('team')} className="cursor-pointer">
+                    Team {getSortIcon('team')}
+                  </TableHead>
+                  <TableHead onClick={() => handleSort('created_at')} className="cursor-pointer">
+                    Created {getSortIcon('created_at')}
+                  </TableHead>
+                  <TableHead onClick={() => handleSort('updated_at')} className="cursor-pointer">
+                    Updated {getSortIcon('updated_at')}
+                  </TableHead>
+                  <TableHead onClick={() => handleSort('agent')} className="cursor-pointer">
+                    Agent {getSortIcon('agent')}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTickets.map((ticket) => (
-                  <TableRow
+                {sortedTickets.map((ticket) => (
+                  <TableRow 
                     key={ticket.id}
+                    className={`cursor-pointer hover:bg-muted/50 ${selectedTicketId === ticket.id ? 'bg-muted' : ''}`}
                     onClick={() => onTicketClick(ticket.id)}
-                    className={`cursor-pointer ${selectedTicketId === ticket.id ? 'bg-blue-50' : ''}`}
                   >
                     <TableCell>{ticket.title}</TableCell>
                     <TableCell>
-                      <Badge variant={getStatusColor(ticket.status)}>
+                      <Badge variant={`status-${ticket.status}`}>
                         {ticket.status.replace('_', ' ')}
                       </Badge>
                     </TableCell>
                     <TableCell>{ticket.team?.name || 'Unassigned'}</TableCell>
                     <TableCell>{formatDate(ticket.created_at)}</TableCell>
                     <TableCell>{formatDate(ticket.updated_at)}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {ticket.assigned_agent?.full_name || 'Unassigned'}
-                    </TableCell>
+                    <TableCell>{ticket.assigned_agent?.full_name || 'Unassigned'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

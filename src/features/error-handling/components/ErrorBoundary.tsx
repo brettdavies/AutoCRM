@@ -3,8 +3,8 @@ import {
   handleUIError,
   handleNavigationError,
   handleStateError
-} from './handlers'
-import { BaseAuthError } from './types'
+} from '../utils/handlers'
+import { BaseAuthError } from '../types/error.types'
 
 /**
  * @interface ErrorBoundaryProps

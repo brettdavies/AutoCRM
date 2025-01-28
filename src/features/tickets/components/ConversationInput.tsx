@@ -1,6 +1,7 @@
 import { useState, useCallback, memo } from 'react';
 import type { MessageType } from '../types/conversation.types';
-import { Button, Textarea, Switch, Label } from '@/components/ui';
+import { Button, Textarea, Label } from '@/shared/components';
+import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 
 interface ConversationInputProps {
@@ -10,7 +11,6 @@ interface ConversationInputProps {
 }
 
 export const ConversationInput = memo(function ConversationInput({
-  ticketId,
   onSendMessage,
   className = ''
 }: ConversationInputProps) {

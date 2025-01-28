@@ -1,4 +1,3 @@
-
 title: "Architecture Details"
 version: "1.0.0"
 last_updated: "2025-01-20"
@@ -101,7 +100,10 @@ AutoCRM is built as a modern, AI-enhanced customer support platform with these c
 const frontendStack = {
   framework: 'React 18+',
   stateManagement: 'Redux Toolkit',
-  styling: 'TailwindCSS',
+  ui: {
+    components: 'shadcn/ui',  // Primary UI component system
+    styling: 'TailwindCSS',   // Used by shadcn, custom styles only when needed
+  },
   realtime: 'Supabase Realtime',
   apiClient: 'supabase-js'
 };

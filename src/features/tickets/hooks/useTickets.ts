@@ -1,82 +1,110 @@
-import { useQuery } from '@tanstack/react-query';
-import type { UseTicketsOptions } from '@/features/tickets/types/ticket.types';
 import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { UseTicketsReturn, HookError } from '../types/hook.types';
+import type { TicketStatus } from '../types/ticket.types';
+import { TicketService } from '../services/ticket.service';
+import { UIError, ErrorCode } from '@/features/error-handling/types/error.types';
+import { supabase } from '@/core/supabase/client';
 import { useAuth } from '@/features/auth';
-import { TicketService } from '@/features/tickets/services/ticket.service';
 import logger from '@/shared/utils/logger.utils';
 
-export function useTickets(options: UseTicketsOptions = {}) {
-  const { teamId, agentId, status } = options;
+/**
+ * Hook for fetching and managing tickets with real-time updates
+ * @param filters - Optional filters to apply to the ticket query
+ * @returns {UseTicketsReturn} Object containing tickets data and loading state
+ * @throws {UIError} When subscription setup fails or ticket fetch fails
+ */
+export function useTickets(filters?: {
+  status?: TicketStatus;
+  teamId?: string;
+  agentId?: string;
+}): UseTicketsReturn {
+  const queryClient = useQueryClient();
+  const COMPONENT = 'useTickets';
   const { session, profile } = useAuth();
 
-  logger.debug('[useTickets] Hook called with options:', {
-    teamId,
-    agentId,
-    status,
-    userId: session?.user?.id,
-    userTeamId: profile?.team_id
-  });
-
-  const {
-    data: tickets,
-    isLoading,
-    error,
-    refetch
-  } = useQuery({
-    queryKey: ['tickets', teamId, agentId, status, session?.user?.id],
-    queryFn: async () => {
-      if (!session?.user?.id) throw new Error('Not authenticated');
-
-      logger.debug('[useTickets] Fetching tickets with params:', {
-        teamId: teamId || undefined,
-        agentId: agentId || undefined,
-        status: status || undefined,
-        userId: session.user.id,
-        userTeamId: profile?.team_id || undefined
-      });
-
-      const result = await TicketService.getTickets({
-        teamId: teamId || undefined,
-        agentId: agentId || undefined,
-        status: status || undefined,
-        userId: session.user.id,
-        userTeamId: profile?.team_id || undefined
-      });
-
-      logger.debug('[useTickets] Received tickets:', {
-        count: result.length,
-        tickets: result.map(t => ({
-          id: t.id,
-          title: t.title,
-          status: t.status,
-          assigned_agent: t.assigned_agent?.id
-        }))
-      });
-
-      return result;
-    },
-    enabled: !!session?.user?.id
-  });
-
-  // Subscribe to ticket changes
+  // Set up real-time subscription
   useEffect(() => {
     if (!session?.user?.id) return;
 
-    logger.debug('[useTickets] Setting up ticket subscription');
-    const subscription = TicketService.subscribeToTicket(undefined, () => {
-      logger.debug('[useTickets] Ticket update received, refetching...');
-      refetch();
-    });
+    logger.debug(`[${COMPONENT}] Setting up subscription for tickets`, { filters });
+    
+    let subscription;
+    try {
+      subscription = supabase
+        .channel('tickets_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tickets'
+          },
+          () => {
+            queryClient.invalidateQueries({ queryKey: ['tickets', filters] });
+          }
+        )
+        .subscribe();
+    } catch (error) {
+      logger.error(`[${COMPONENT}] Subscription setup failed:`, error);
+      throw new UIError(
+        ErrorCode.STATE_SYNC_FAILED,
+        'Failed to set up real-time updates for tickets',
+        COMPONENT,
+        error
+      );
+    }
 
     return () => {
-      logger.debug('[useTickets] Cleaning up ticket subscription');
-      subscription.unsubscribe();
+      logger.debug(`[${COMPONENT}] Cleaning up subscription for tickets`);
+      subscription?.unsubscribe();
     };
-  }, [teamId, refetch, session?.user?.id]);
+  }, [queryClient, filters, session?.user?.id]);
+
+  // Fetch tickets
+  const { data: tickets, isLoading, error } = useQuery({
+    queryKey: ['tickets', filters],
+    queryFn: async () => {
+      if (!session?.user?.id) {
+        throw new UIError(
+          ErrorCode.STATE_SYNC_FAILED,
+          'User must be authenticated to fetch tickets',
+          COMPONENT
+        );
+      }
+
+      logger.debug(`[${COMPONENT}] Fetching tickets`, { filters });
+      try {
+        const tickets = await TicketService.getTickets({
+          teamId: filters?.teamId,
+          agentId: filters?.agentId,
+          status: filters?.status,
+          userId: session.user.id,
+          userRole: profile?.user_role,
+          userTeamId: profile?.team_id
+        });
+        logger.debug(`[${COMPONENT}] Tickets fetched successfully`, { 
+          count: tickets.length 
+        });
+        return tickets;
+      } catch (error) {
+        logger.error(`[${COMPONENT}] Failed to fetch tickets`, { error });
+        throw new UIError(
+          ErrorCode.STATE_SYNC_FAILED,
+          'Failed to fetch tickets',
+          COMPONENT,
+          error
+        );
+      }
+    },
+    enabled: !!session?.user?.id,
+    staleTime: 1000 * 60, // Consider data fresh for 1 minute
+    gcTime: 1000 * 60 * 5 // Keep in cache for 5 minutes
+  });
 
   return {
     tickets,
     isLoading,
-    error
+    error: error as HookError | null
   };
 } 

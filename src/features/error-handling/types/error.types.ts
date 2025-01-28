@@ -109,6 +109,31 @@ export class DatabaseError extends SupabaseAuthError {
 }
 
 /**
+ * @class ValidationError
+ * @extends BaseAuthError
+ * @description Validation-related errors including format and business rule violations
+ * @property {string} field - Field that failed validation
+ * @property {unknown} value - Invalid value
+ */
+export class ValidationError extends BaseAuthError {
+  readonly field: string;
+  readonly value: unknown;
+
+  constructor(
+    code: string,
+    message: string,
+    field: string,
+    value: unknown,
+    cause?: unknown
+  ) {
+    super(code, message, cause);
+    this.name = 'ValidationError';
+    this.field = field;
+    this.value = value;
+  }
+}
+
+/**
  * @enum ErrorCode
  * @description Enumeration of all possible error codes
  * @readonly
@@ -132,5 +157,11 @@ export enum ErrorCode {
   
   // Database Errors
   RLS_VIOLATION = 'DB_001',
-  QUERY_FAILED = 'DB_002'
+  QUERY_FAILED = 'DB_002',
+
+  // Validation Errors
+  INVALID_FORMAT = 'VAL_001',
+  INVALID_VALUE = 'VAL_002',
+  DUPLICATE_VALUE = 'VAL_003',
+  BUSINESS_RULE_VIOLATION = 'VAL_004'
 } 

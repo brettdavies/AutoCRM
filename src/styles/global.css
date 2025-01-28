@@ -1,0 +1,216 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --ring: 215 20.2% 65.1%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 85.7% 97.3%;
+
+    --ring: 217.2 32.6% 17.5%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Tab styles */
+  .tabs-list {
+    @apply w-full bg-transparent;
+  }
+  
+  .tab-trigger {
+    @apply flex-1 bg-transparent rounded-none transition-colors;
+  }
+  
+  .tab-trigger[data-state="active"] {
+    @apply bg-accent/80;
+  }
+
+  /* Team list styles */
+  .team-item {
+    @apply p-2 rounded cursor-pointer hover:bg-accent/50 transition-colors;
+  }
+  
+  .team-item-active {
+    @apply bg-accent/80;
+  }
+
+  /* Member list styles */
+  .member-row {
+    @apply flex items-center justify-between p-2 rounded hover:bg-accent/80 transition-colors;
+  }
+
+  .member-name {
+    @apply font-medium hover:underline w-fit cursor-pointer;
+  }
+
+  .member-email {
+    @apply text-sm text-muted-foreground hover:underline w-fit cursor-pointer;
+  }
+
+  .member-actions {
+    @apply flex items-center gap-2;
+  }
+
+  /* Suggestion box styles */
+  .suggestion-box {
+    @apply absolute left-0 right-0 mt-1 bg-background border rounded-lg shadow-xl z-[9999] max-h-[300px] overflow-y-auto;
+  }
+
+  .suggestion-box-content {
+    @apply bg-background p-1;
+  }
+
+  .suggestion-item {
+    @apply p-3 hover:bg-accent/80 cursor-pointer rounded-md transition-colors;
+  }
+
+  /* Layout styles */
+  .team-management-layout {
+    @apply grid grid-cols-[300px_1fr] gap-4;
+  }
+
+  .header-layout {
+    @apply flex items-center justify-between;
+  }
+
+  .vertical-stack {
+    @apply space-y-4;
+  }
+
+  .vertical-stack-sm {
+    @apply space-y-2;
+  }
+
+  .form-row {
+    @apply flex gap-2;
+  }
+
+  .form-field {
+    @apply relative flex-1;
+  }
+
+  /* Z-index layers */
+  .search-layer {
+    @apply relative z-50;
+  }
+
+  .content-layer {
+    @apply relative z-0;
+  }
+
+  /* Read-only styles */
+  .readonly-member {
+    @apply p-2 rounded hover:bg-accent transition-colors cursor-pointer;
+  }
+
+  /* Skill styles */
+  .skill-badge-direct {
+    @apply flex items-center gap-1 bg-primary text-primary-foreground hover:bg-primary/90;
+  }
+
+  .skill-badge-direct-remove {
+    @apply ml-1 rounded-full hover:bg-primary-foreground/20;
+  }
+
+  .skill-badge-inherited {
+    @apply flex items-center gap-1 bg-muted text-muted-foreground cursor-help hover:bg-muted/80 focus:bg-muted/80;
+  }
+
+  .skill-badge-inherited-active {
+    @apply bg-muted/70;
+  }
+
+  .skill-matrix-container {
+    @apply w-full;
+  }
+
+  .skill-matrix-viewport {
+    @apply h-full w-full rounded-md border p-4;
+  }
+
+  .skill-matrix-header {
+    @apply flex items-center justify-between mb-2;
+  }
+
+  .skill-matrix-title {
+    @apply text-sm font-medium;
+  }
+
+  .skill-matrix-filters {
+    @apply flex gap-2;
+  }
+
+  .skill-matrix-content {
+    @apply space-y-4;
+  }
+
+  .skill-matrix-badges {
+    @apply flex flex-wrap gap-2 mt-2;
+  }
+} 

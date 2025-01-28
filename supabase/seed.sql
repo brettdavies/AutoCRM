@@ -57,15 +57,21 @@ SELECT
 FROM auth.users;
 
 -- Create user profiles
-INSERT INTO public.profiles (id, email, full_name)
+INSERT INTO public.profiles (id, email, full_name, user_role, avatar_url)
 SELECT 
   u.id,
   u.email,
   CASE 
     WHEN position('@' in u.email) > 1 THEN 
-      substring(u.email from 1 for position('@' in u.email) - 1)
+      replace(substring(u.email from 1 for position('@' in u.email) - 1), '_', ' ')
     ELSE u.email
-  END
+  END,
+  CASE
+    WHEN u.raw_user_meta_data->>'role' = 'admin' THEN 'admin'::user_role
+    WHEN u.raw_user_meta_data->>'role' = 'agent' THEN 'agent'::user_role 
+    WHEN u.raw_user_meta_data->>'role' = 'customer' THEN 'customer'::user_role
+  END,
+  'https://www.gravatar.com/avatar/' || md5(lower(trim(u.email))) || '?d=mp'
 FROM auth.users u
 WHERE NOT EXISTS (
   SELECT 1 FROM public.profiles p WHERE p.id = u.id
@@ -83,24 +89,25 @@ VALUES
 
 -- Assign agents to teams with proper roles
 INSERT INTO public.team_members (team_id, user_id, team_member_role)
-VALUES
-  -- Technical Support Team
-  ('11234567-e89b-12d3-a456-426614174000', 'e1234567-e89b-12d3-a456-426614174000', 'lead'),  -- tech_lead
-  ('11234567-e89b-12d3-a456-426614174000', 'e4567890-e89b-12d3-a456-426614174003', 'member'), -- tech_agent1
-  ('11234567-e89b-12d3-a456-426614174000', 'e5678901-e89b-12d3-a456-426614174004', 'member'), -- tech_agent2
-  ('11234567-e89b-12d3-a456-426614174000', 'e6789012-e89b-12d3-a456-426614174005', 'member'), -- tech_agent3
-  
-  -- Customer Success Team
-  ('12345678-e89b-12d3-a456-426614174001', 'e2345678-e89b-12d3-a456-426614174001', 'lead'),  -- success_lead
-  ('12345678-e89b-12d3-a456-426614174001', 'e7890123-e89b-12d3-a456-426614174006', 'member'), -- success_agent1
-  ('12345678-e89b-12d3-a456-426614174001', 'e8901234-e89b-12d3-a456-426614174007', 'member'), -- success_agent2
-  ('12345678-e89b-12d3-a456-426614174001', 'e9012345-e89b-12d3-a456-426614174008', 'member'), -- success_agent3
-  
-  -- Billing Support Team
-  ('13456789-e89b-12d3-a456-426614174002', 'e3456789-e89b-12d3-a456-426614174002', 'lead'),  -- billing_lead
-  ('13456789-e89b-12d3-a456-426614174002', 'ea123456-e89b-12d3-a456-426614174009', 'member'), -- billing_agent1
-  ('13456789-e89b-12d3-a456-426614174002', 'eb234567-e89b-12d3-a456-426614174010', 'member'), -- billing_agent2
-  ('13456789-e89b-12d3-a456-426614174002', 'ec345678-e89b-12d3-a456-426614174011', 'member'); -- billing_agent3
+SELECT 
+  teams.id,
+  users.id,
+  CASE 
+    WHEN users.email LIKE '%lead@example.com' THEN 'lead'::team_member_role 
+    ELSE 'member'::team_member_role
+  END
+FROM 
+  (SELECT id, name FROM public.teams) teams
+CROSS JOIN LATERAL (
+  SELECT u.id, u.email
+  FROM auth.users u
+  WHERE u.email LIKE CASE 
+    WHEN teams.name = 'Technical Support' THEN 'tech_%'
+    WHEN teams.name = 'Customer Success' THEN 'success_%' 
+    ELSE 'billing_%'
+  END
+  LIMIT 4
+) users;
 
 -- Update user metadata with team_id and lead status
 DO $$

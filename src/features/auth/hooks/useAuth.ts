@@ -1,7 +1,9 @@
 import { useAuth as useAuthProvider } from '../components/AuthProvider'
 import type { Profile } from '../types/auth.types'
-import { supabase } from '@/core/supabase'
-import type { UserRole } from '@/core/supabase/types/database.types'
+import { supabase } from '@/core/supabase/client'
+import type { OAuthProvider } from '../types/auth.types'
+
+type UserRole = 'admin' | 'agent' | 'lead' | 'customer';
 
 /**
  * @function useProfile
@@ -76,6 +78,10 @@ export function useAuth() {
         email: 'admin@example.com',
         password: 'admin123'
       },
+      lead: {
+        email: 'tech_lead@example.com',
+        password: 'agent123'
+      },
       agent: {
         email: 'tech_agent1@example.com',
         password: 'agent123'
@@ -84,7 +90,7 @@ export function useAuth() {
         email: 'customer1@example.com',
         password: 'customer123'
       }
-    }
+    } as const;
 
     const { error } = await supabase.auth.signInWithPassword(demoCredentials[role])
     if (error) throw error
@@ -140,9 +146,9 @@ export function useAuth() {
     resetPassword,
     signUp,
     signInWithOAuth,
-    isAdmin: profile?.role === 'admin',
-    isAgent: profile?.role === 'agent',
-    isCustomer: profile?.role === 'customer',
+    isAdmin: profile?.user_role === 'admin',
+    isAgent: profile?.user_role === 'agent',
+    isCustomer: profile?.user_role === 'customer',
     isAuthenticated: !!session
   }
 } 

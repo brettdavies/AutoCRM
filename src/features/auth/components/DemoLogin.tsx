@@ -8,7 +8,9 @@ import {
   CardContent,
   Button,
 } from '@/shared/components'
-import type { UserRole } from '@/core/supabase/types/database.types'
+import { cn } from '@/lib/utils'
+
+type UserRole = 'admin' | 'agent' | 'lead' | 'customer';
 
 export function DemoLogin() {
   const [isLoading, setIsLoading] = useState(false)
@@ -40,7 +42,6 @@ export function DemoLogin() {
         </p>
         <div className="flex flex-col gap-2">
           <Button
-            className="w-full"
             onClick={() => handleDemoLogin('admin')}
             disabled={isLoading}
             variant="default"
@@ -48,7 +49,14 @@ export function DemoLogin() {
             {isLoading ? 'Loading...' : 'Try as Admin'}
           </Button>
           <Button
-            className="w-full"
+            onClick={() => handleDemoLogin('lead')}
+            disabled={isLoading}
+            variant="default"
+            className="w-full bg-slate-600 hover:bg-slate-600"
+          >
+            {isLoading ? 'Loading...' : 'Try as Team Lead'}
+          </Button>
+          <Button
             onClick={() => handleDemoLogin('agent')}
             disabled={isLoading}
             variant="secondary"
@@ -56,10 +64,10 @@ export function DemoLogin() {
             {isLoading ? 'Loading...' : 'Try as Agent'}
           </Button>
           <Button
-            className="w-full"
             onClick={() => handleDemoLogin('customer')}
             disabled={isLoading}
             variant="outline"
+            className="w-full"
           >
             {isLoading ? 'Loading...' : 'Try as Customer'}
           </Button>

@@ -1,5 +1,5 @@
 import logger from '@/shared/utils/logger.utils'
-import { Database } from '@/types/database.types'
+import { Database } from '@/core/supabase/types/database.types'
 
 export abstract class BaseService {
   protected logger = logger.child({ service: this.constructor.name })

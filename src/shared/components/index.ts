@@ -61,7 +61,22 @@ export { ScrollArea } from '@/components/ui/scroll-area'
 export { Textarea } from '@/components/ui/textarea'
 export { Badge } from '@/components/ui/badge'
 
-export { PageHeader } from "./PageHeader"
-export { ErrorBoundary } from "./ErrorBoundary"
-export * from './ResponsivePanel';
-export * from './PageHeader'; 
+export { PageHeader } from './PageHeader'
+export { ResponsivePanel } from './ResponsivePanel'
+
+export {
+  Alert,
+  AlertTitle,
+  AlertDescription
+} from '@/components/ui/alert'
+
+export { Skeleton } from '@/components/ui/skeleton'
+
+export {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from '@/components/ui/tabs'
+
+export * from './PageHeader';

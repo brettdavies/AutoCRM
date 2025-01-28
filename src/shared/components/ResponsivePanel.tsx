@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { Card } from '@/components/ui/card'
+import { Card } from '@/shared/components'
 import { cn } from '@/lib/utils'
 
 interface ResponsivePanelProps {

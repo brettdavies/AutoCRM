@@ -1,5 +1,7 @@
 import type { Session, User } from '@supabase/supabase-js'
-import type { ProfileRow } from '@/core/supabase/types/database.types'
+import type { Database } from '@/core/supabase/types/database.types'
+
+export type ProfileRow = Database['public']['Tables']['profiles']['Row']
 
 /**
  * @interface AuthState
@@ -53,17 +55,24 @@ export interface AuthContextValue {
 
 /**
  * @interface Profile
- * @extends {Omit<ProfileRow, 'oauth_metadata'>}
+ * @extends {Omit<ProfileRow, 'oauth_metadata' | 'oauth_provider' | 'avatar_url' | 'deleted_at'>}
  * @description User profile with typed OAuth metadata
  */
-export interface Profile extends Omit<ProfileRow, 'oauth_metadata'> {
+export interface Profile extends Omit<ProfileRow, 'oauth_metadata' | 'oauth_provider' | 'avatar_url' | 'deleted_at'> {
   oauth_provider?: OAuthProvider
-  avatar_url?: string
   oauth_metadata: OAuthMetadata
+  user_role: UserRole
+  team_role?: TeamRole
+  team_id?: string
+  avatar_url?: string
+  deleted_at?: string | null
 }
 
 // Role type definition
-export type UserRole = 'customer' | 'agent' | 'admin';
+export type UserRole = Database['public']['Enums']['user_role'];
+
+// Team role type definition
+export type TeamRole = Database['public']['Enums']['team_member_role'];
 
 // Permissions interface matching our RLS policies
 export interface RolePermissions {
@@ -154,10 +163,9 @@ export interface OAuthMetadata {
  * @interface OAuthError
  * @description OAuth specific error types
  */
-export interface OAuthError {
+export interface OAuthError extends Error {
   type: 'oauth_error';
   code: 'user_cancelled' | 'provider_error' | 'network_error';
-  message: string;
   provider: OAuthProvider;
   originalError?: unknown;
 } 

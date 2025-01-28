@@ -27,13 +27,14 @@
    AutoCRM/
    ├── src/                 # Application source
    │   ├── features/        # Feature modules
-   │   ├── shared/         # Shared utilities
-   │   │   ├── components/ # Shared components
-   │   │   ├── styles/     # Global styles
-   │   │   │   ├── components/  # Component styles
-   │   │   │   ├── themes/      # Theme definitions
-   │   │   │   └── global/      # Global styles
-   │   │   └── utils/     # Shared utilities
+   │   │   ├── shared/         # Shared utilities
+   │   │   │   ├── components/ # Shared components
+   │   │   │   ├── styles/     # Global styles
+   │   │   │   │   ├── components/  # Component styles
+   │   │   │   │   ├── themes/      # Theme definitions
+   │   │   │   │   └── global/      # Global styles
+   │   │   │   └── utils/     # Shared utilities
+   │   │   └── types/         # Global types
    │   ├── core/          # Base implementations
    │   │   ├── supabase/  # Supabase integration
    │   │   ├── api/       # API clients
@@ -277,14 +278,31 @@
    - Suspense for loading
    - React Query for data
 
-3. **TailwindCSS Usage**:
-
-   ```typescript
-   const styles = {
-     base: 'px-4 py-2 rounded',
-     primary: 'bg-blue-500 hover:bg-blue-600'
-   }
-   ```
+3. **UI Component System**:
+   - Use shadcn components as primary UI building blocks
+   - Only use direct TailwindCSS when shadcn components don't exist
+   - Extend shadcn components instead of creating new patterns
+   - Example shadcn usage:
+     ```typescript
+     import { Button } from "@/components/ui/button"
+     import { Input } from "@/components/ui/input"
+     
+     function LoginForm() {
+       return (
+         <form>
+           <Input type="email" placeholder="Email" />
+           <Button type="submit">Login</Button>
+         </form>
+       )
+     }
+     ```
+   - TailwindCSS for custom styling only:
+     ```typescript
+     const styles = {
+       customLayout: 'grid grid-cols-[1fr_2fr]', // No shadcn equivalent
+       specialText: 'font-mono tracking-tight' // Custom typography
+     }
+     ```
 
 ## Quality Assurance
 

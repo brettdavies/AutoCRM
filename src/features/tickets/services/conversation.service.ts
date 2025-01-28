@@ -1,6 +1,5 @@
 import { supabase } from '@/core/supabase/client';
 import type {
-  Conversation,
   ConversationWithSender,
   CreateConversationDTO,
   UpdateConversationDTO
@@ -17,6 +16,16 @@ export class ConversationService {
     )
   `;
 
+  private static transformConversation(data: any): ConversationWithSender {
+    return {
+      ...data,
+      sender: data.sender ? {
+        ...data.sender,
+        full_name: data.sender.full_name || 'Unknown User'
+      } : null
+    };
+  }
+
   static async getConversations(ticketId: string): Promise<ConversationWithSender[]> {
     logger.debug('[ConversationService] Getting conversations for ticket:', { ticketId });
 
@@ -31,7 +40,7 @@ export class ConversationService {
       throw error;
     }
 
-    return data;
+    return data.map(this.transformConversation);
   }
 
   static async createConversation(dto: CreateConversationDTO): Promise<ConversationWithSender> {
@@ -55,7 +64,7 @@ export class ConversationService {
       throw error;
     }
 
-    return data;
+    return this.transformConversation(data);
   }
 
   static async updateConversation(
@@ -76,7 +85,7 @@ export class ConversationService {
       throw error;
     }
 
-    return data;
+    return this.transformConversation(data);
   }
 
   static async deleteConversation(id: string): Promise<void> {

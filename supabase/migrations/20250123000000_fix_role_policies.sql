@@ -22,9 +22,8 @@ DROP POLICY IF EXISTS "Team members can view their teams" ON teams;
 -- Drop existing functions
 DROP FUNCTION IF EXISTS is_admin();
 DROP FUNCTION IF EXISTS sync_profile_role();
-DROP FUNCTION IF EXISTS get_user_role();
 DROP FUNCTION IF EXISTS is_agent();
-DROP FUNCTION IF EXISTS is_team_member();
+DROP FUNCTION IF EXISTS is_team_lead();
 DROP TRIGGER IF EXISTS on_profile_role_change ON profiles;
 
 -- Create role check functions using auth.users metadata
@@ -54,9 +53,9 @@ CREATE OR REPLACE FUNCTION get_user_team_id()
 RETURNS UUID AS $$
 BEGIN
   RETURN (
-    SELECT (raw_user_meta_data->>'team_id')::uuid
-    FROM auth.users
-    WHERE id = auth.uid()
+    SELECT team_id
+    FROM team_members
+    WHERE user_id = auth.uid()
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -64,10 +63,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION is_team_lead()
 RETURNS BOOLEAN AS $$
 BEGIN
-  RETURN (
-    SELECT raw_user_meta_data->>'is_team_lead' = 'true'
-    FROM auth.users
-    WHERE id = auth.uid()
+  RETURN EXISTS (
+    SELECT 1 
+    FROM team_members
+    WHERE user_id = auth.uid()
+    AND team_member_role = 'lead'
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -288,4 +288,103 @@ CREATE POLICY "AI learning data access"
                 t.assigned_team_id = get_user_team_id()
             )
         )
-    ); 
+    );
+
+-- Add skill-related policies
+CREATE POLICY "Admins can manage all skills"
+ON skills FOR ALL
+TO authenticated
+USING (is_admin());
+
+CREATE POLICY "Users can view skills"
+ON skills FOR SELECT
+TO authenticated
+USING (
+    is_admin() OR
+    EXISTS (
+        SELECT 1 
+        FROM entity_skills es
+        WHERE es.skill_id = id
+        AND (
+            (es.entity_type = 'agent' AND es.entity_id::uuid = auth.uid()) OR
+            (es.entity_type = 'team' AND es.entity_id IN (
+                SELECT team_id 
+                FROM team_members 
+                WHERE user_id = auth.uid()
+            ))
+        )
+    )
+);
+
+CREATE POLICY "Admins can manage entity skills"
+ON entity_skills FOR ALL
+TO authenticated
+USING (is_admin());
+
+CREATE POLICY "Team leads can manage team entity skills"
+ON entity_skills FOR INSERT
+TO authenticated
+WITH CHECK (
+    is_team_lead() AND
+    entity_type = 'team' AND
+    entity_id IN (
+        SELECT team_id
+        FROM team_members
+        WHERE user_id = auth.uid()
+        AND team_member_role = 'lead'
+    )
+);
+
+-- Add OAuth unlink function
+CREATE OR REPLACE FUNCTION public.unlink_oauth_account(user_id uuid, provider text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF auth.uid() <> user_id THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+
+  UPDATE auth.users
+  SET raw_app_meta_data = raw_app_meta_data - concat('oauth_', provider)
+  WHERE id = user_id;
+END;
+$$;
+
+-- Add team membership management function
+CREATE OR REPLACE FUNCTION update_agent_teams(
+  p_user_id uuid,
+  p_team_memberships jsonb[]
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  PERFORM check_admin();
+  
+  DELETE FROM team_members WHERE user_id = p_user_id;
+  
+  INSERT INTO team_members (user_id, team_id, team_member_role)
+  SELECT 
+    p_user_id,
+    (value->>'teamId')::uuid,
+    (value->>'role')::team_member_role
+  FROM jsonb_array_elements(p_team_memberships);
+END;
+$$;
+
+-- Add role resolution function
+CREATE OR REPLACE FUNCTION get_user_role(user_id uuid)
+RETURNS text
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT 
+    CASE
+      WHEN is_admin() THEN 'admin'
+      WHEN is_team_lead() THEN 'lead'
+      ELSE 'member'
+    END;
+$$;

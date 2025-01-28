@@ -1,8 +1,15 @@
 import { useState } from 'react';
-import { TicketCreationForm } from '../components/TicketForm';
+import type { UseTicketFormReturn, TicketFormData } from '../types/hook.types';
+import logger from '@/shared/utils/logger.utils';
 
-export function useTicketForm() {
-  const [formData, setFormData] = useState<TicketCreationForm>({
+/**
+ * Hook for managing ticket form state
+ * @returns {UseTicketFormReturn} Object containing form state and update functions
+ */
+export function useTicketForm(): UseTicketFormReturn {
+  const COMPONENT = 'useTicketForm';
+
+  const [formData, setFormData] = useState<TicketFormData>({
     title: '',
     description: '',
     team_id: '',
@@ -14,17 +21,16 @@ export function useTicketForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const updateField = <K extends keyof TicketCreationForm>(
-    field: K,
-    value: TicketCreationForm[K]
-  ) => {
+  const updateField = <K extends keyof TicketFormData>(field: K, value: TicketFormData[K]) => {
+    logger.debug(`[${COMPONENT}] Updating form field`, { field, value });
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when field is updated
+    
+    // Clear error for the updated field
     if (errors[field]) {
       setErrors(prev => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
+        const newErrors = { ...prev };
+        delete newErrors[field as string];
+        return newErrors;
       });
     }
   };

@@ -4,35 +4,79 @@ import { TicketList } from '../components/TicketList'
 import { TicketDetails } from '../components/TicketDetails'
 import { useAuth } from '@/features/auth'
 import { useTickets } from '../hooks/useTickets'
+import type { TicketWithRelations } from '../types/ticket.types'
 import { ResponsivePanel, Button, ScrollArea, Card } from '@/shared/components'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import logger from '@/shared/utils/logger.utils'
 import { ticketRoutes } from '../routes'
 
 export function TicketManagement() {
-  const { session } = useAuth()
+  const { session, profile } = useAuth()
   const navigate = useNavigate();
   const [previewTicketId, setPreviewTicketId] = useState<string | null>(null);
   
+  // Check if user is team lead
+  const isTeamLead = profile?.user_role === 'agent' && session?.user?.user_metadata?.is_team_lead === 'true';
+  const teamId = session?.user?.user_metadata?.team_id;
+  
   // Fetch all tickets once
   const { tickets: allTickets, isLoading, error } = useTickets({
-    userId: session?.user?.id,
-    userTeamId: session?.user?.user_metadata?.team_id
+    teamId,
+    userRole: profile?.user_role
   });
 
   // Filter tickets for each list
   const myTickets = useMemo(() => {
     if (!allTickets) return [];
-    return allTickets.filter(ticket => 
-      ticket.assigned_agent?.id === session?.user?.id && 
-      ticket.status !== 'unassigned'
+    
+    // Admins see all tickets
+    if (profile?.user_role === 'admin') {
+      return (allTickets as TicketWithRelations[]).filter(ticket => ticket.status !== 'unassigned');
+    }
+    
+    // For team leads, show all team tickets
+    if (isTeamLead && teamId) {
+      return (allTickets as TicketWithRelations[]).filter(ticket => 
+        ticket.assigned_team_id === teamId && 
+        ticket.status !== 'unassigned'
+      );
+    }
+    
+    // For agents, show assigned tickets
+    if (profile?.user_role === 'agent') {
+      return (allTickets as TicketWithRelations[]).filter(ticket => 
+        ticket.assigned_agent?.id === session?.user?.id && 
+        ticket.status !== 'unassigned'
+      );
+    }
+    
+    // For customers, show created tickets
+    return (allTickets as TicketWithRelations[]).filter(ticket => 
+      ticket.created_by === session?.user?.id
     );
-  }, [allTickets, session?.user?.id]);
+  }, [allTickets, session?.user?.id, profile?.user_role, isTeamLead, teamId]);
 
   const unassignedTickets = useMemo(() => {
     if (!allTickets) return [];
-    return allTickets.filter(ticket => ticket.status === 'unassigned');
-  }, [allTickets]);
+
+    // Admins see all unassigned tickets
+    if (profile?.user_role === 'admin') {
+      return (allTickets as TicketWithRelations[]).filter(ticket => ticket.status === 'unassigned');
+    }
+
+    // Only show unassigned tickets to agents and team leads
+    if (profile?.user_role !== 'agent') return [];
+    
+    // For team leads, show unassigned tickets for their team
+    if (isTeamLead && teamId) {
+      return (allTickets as TicketWithRelations[]).filter(ticket => 
+        ticket.status === 'unassigned' && 
+        ticket.assigned_team_id === teamId
+      );
+    }
+
+    return (allTickets as TicketWithRelations[]).filter(ticket => ticket.status === 'unassigned');
+  }, [allTickets, profile?.user_role, isTeamLead, teamId]);
   
   // Refs for dimension tracking
   const gridRef = useRef<HTMLDivElement>(null)
@@ -113,79 +157,15 @@ export function TicketManagement() {
     setPreviewTicketId(ticketId === previewTicketId ? null : ticketId);
   }, [previewTicketId]);
 
-  const handleViewDetails = useCallback(() => {
-    if (previewTicketId) {
-      logger.debug('[TicketManagement] Navigating to ticket details', { ticketId: previewTicketId });
-      navigate(ticketRoutes.view(previewTicketId));
-    }
-  }, [previewTicketId, navigate]);
-
   const handleClosePreview = useCallback(() => {
     setPreviewTicketId(null);
   }, []);
 
-  // Memoize the ticket lists
-  const myTicketsList = useMemo(() => (
-    <ResponsivePanel
-      mobileHeight="h-[calc(40vh-6rem)]"
-      desktopHeight="lg:h-[calc(40vh-6rem)]"
-      minHeight="min-h-[200px]"
-    >
-      <ScrollArea className="h-full">
-        <TicketList
-          tickets={myTickets}
-          onTicketClick={handleTicketClick}
-          title="My Tickets"
-          hideStatusFilter={false}
-          selectedTicketId={previewTicketId}
-        />
-      </ScrollArea>
-    </ResponsivePanel>
-  ), [myTickets, handleTicketClick, previewTicketId]);
-
-  const unassignedTicketsList = useMemo(() => (
-    <ResponsivePanel
-      mobileHeight="h-[calc(40vh-6rem)]"
-      desktopHeight="lg:h-[calc(40vh-6rem)]"
-      minHeight="min-h-[200px]"
-    >
-      <ScrollArea className="h-full">
-        <TicketList
-          tickets={unassignedTickets}
-          onTicketClick={handleTicketClick}
-          title="Unassigned Tickets"
-          hideStatusFilter={true}
-          selectedTicketId={previewTicketId}
-        />
-      </ScrollArea>
-    </ResponsivePanel>
-  ), [unassignedTickets, handleTicketClick, previewTicketId]);
-
-  // Memoize the preview panel
-  const previewPanel = useMemo(() => {
-    if (!previewTicketId) return null;
-
-    return (
-      <Card className="h-[calc(80vh-8rem)]">
-        <div className="p-4 border-b border-border flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Ticket Preview</h2>
-          <Button variant="default" onClick={handleClosePreview}>
-            <XMarkIcon className="h-5 w-5" />
-          </Button>
-        </div>
-        <ScrollArea className="h-[calc(100%-5rem)]">
-          <div className="space-y-4">
-            <TicketDetails ticketId={previewTicketId} />
-            <div className="flex justify-end px-4 pb-4">
-              <Button variant="default" onClick={handleViewDetails}>
-                View Full Details
-              </Button>
-            </div>
-          </div>
-        </ScrollArea>
-      </Card>
-    );
-  }, [previewTicketId, handleClosePreview, handleViewDetails]);
+  const handleViewDetails = useCallback(() => {
+    if (previewTicketId) {
+      navigate(ticketRoutes.view(previewTicketId));
+    }
+  }, [navigate, previewTicketId]);
 
   // Show loading state
   if (isLoading) {
@@ -212,11 +192,61 @@ export function TicketManagement() {
           : 'grid-cols-1'
       }`}>
         <div className="space-y-2">
-          {myTicketsList}
-          {unassignedTicketsList}
+          <ResponsivePanel
+            mobileHeight="h-[calc(40vh-6rem)]"
+            desktopHeight="lg:h-[calc(40vh-6rem)]"
+            minHeight="min-h-[200px]"
+          >
+            <ScrollArea className="h-full">
+              <TicketList
+                tickets={myTickets}
+                onTicketClick={handleTicketClick}
+                title={profile?.user_role === 'admin' ? "All Tickets" : isTeamLead ? "My Team's Tickets" : "My Tickets"}
+                hideStatusFilter={false}
+                selectedTicketId={previewTicketId}
+              />
+            </ScrollArea>
+          </ResponsivePanel>
+
+          {(profile?.user_role === 'admin' || profile?.user_role === 'agent') && (
+            <ResponsivePanel
+              mobileHeight="h-[calc(40vh-6rem)]"
+              desktopHeight="lg:h-[calc(40vh-6rem)]"
+              minHeight="min-h-[200px]"
+            >
+              <ScrollArea className="h-full">
+                <TicketList
+                  tickets={unassignedTickets}
+                  onTicketClick={handleTicketClick}
+                  title="Unassigned Tickets"
+                  hideStatusFilter={true}
+                  selectedTicketId={previewTicketId}
+                />
+              </ScrollArea>
+            </ResponsivePanel>
+          )}
         </div>
 
-        {previewPanel}
+        {previewTicketId && (
+          <Card className="h-[calc(80vh-8rem)]">
+            <div className="p-4 border-b border-border flex justify-between items-center">
+              <h2 className="text-lg font-semibold">Ticket Preview</h2>
+              <Button variant="default" onClick={handleClosePreview}>
+                <XMarkIcon className="h-5 w-5" />
+              </Button>
+            </div>
+            <ScrollArea className="h-[calc(100%-5rem)]">
+              <div className="space-y-4">
+                <TicketDetails ticketId={previewTicketId} />
+                <div className="flex justify-end px-4 pb-4">
+                  <Button variant="default" onClick={handleViewDetails}>
+                    View Full Details
+                  </Button>
+                </div>
+              </div>
+            </ScrollArea>
+          </Card>
+        )}
       </div>
     </div>
   );

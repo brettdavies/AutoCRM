@@ -1,7 +1,12 @@
 import { memo } from 'react';
 import { useTicket } from '../hooks/useTicket';
+import { useAuth } from '@/features/auth';
+import { useTeamMembers } from '@/features/teams/hooks/useTeams';
+import { useTeamList } from '@/features/teams/hooks/useTeams';
+import { useQueryClient } from '@tanstack/react-query';
 import logger from '@/shared/utils/logger.utils';
-import type { TicketHistory } from '../types/ticket.types';
+import type { TicketWithRelations } from '../types/ticket.types';
+import type { Team } from '@/features/teams/types/team.types';
 import {
   Card,
   CardHeader,
@@ -10,21 +15,108 @@ import {
   CardContent,
   Separator,
   Badge,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
 } from '@/shared/components';
+import { useToast } from '@/components/ui/use-toast';
 
 interface TicketDetailsProps {
   ticketId: string;
 }
 
 export const TicketDetails = memo(function TicketDetails({ ticketId }: TicketDetailsProps) {
-  const { ticket, isLoading, error } = useTicket(ticketId);
+  const { ticket, isLoading, error, updateTicket } = useTicket(ticketId);
+  const { profile, session } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const isTeamLead = profile?.user_role === 'agent' && session?.user?.user_metadata?.is_team_lead === 'true';
+  const canReassign = profile?.user_role === 'admin' || isTeamLead;
+  const isResolved = ticket?.status === 'resolved' || ticket?.status === 'closed';
+  
+  // Get team members if user can reassign
+  const { members = [] } = useTeamMembers((ticket as TicketWithRelations)?.team?.id ?? '');
+  const { data: teams = [] } = useTeamList();
+
+  const handleAgentChange = async (agentId: string) => {
+    if (!ticket) return;
+    try {
+      await updateTicket.mutateAsync({
+        id: ticket.id,
+        dto: {
+          assigned_agent_id: agentId === 'unassigned' ? null : agentId
+        }
+      });
+
+      // Get agent name for the toast message
+      const agentName = agentId === 'unassigned' 
+        ? 'unassigned' 
+        : members.find(m => m.id === agentId)?.full_name || 'unknown agent';
+
+      // Show success toast
+      toast({
+        title: "Agent Updated",
+        description: `Ticket #${ticket.id} has been reassigned to ${agentName}.`,
+        variant: "success",
+      });
+
+      // Invalidate queries to trigger updates
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] });
+    } catch (error) {
+      console.error('Failed to reassign ticket:', error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update agent assignment. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleTeamChange = async (teamId: string) => {
+    if (!ticket) return;
+    try {
+      await updateTicket.mutateAsync({
+        id: ticket.id,
+        dto: {
+          assigned_team_id: teamId === 'unassigned' ? null : teamId,
+          assigned_agent_id: null // Clear agent when team changes
+        }
+      });
+
+      // Get team name for the toast message
+      const teamName = teamId === 'unassigned'
+        ? 'unassigned'
+        : teams.find(t => t.id === teamId)?.name || 'unknown team';
+
+      // Show success toast
+      toast({
+        title: "Team Updated",
+        description: `Ticket #${ticket.id} has been reassigned to ${teamName}. Previous agent assignment has been cleared.`,
+        variant: "success",
+      });
+
+      // Invalidate queries to trigger updates
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] });
+    } catch (error) {
+      console.error('Failed to reassign team:', error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update team assignment. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   logger.debug('TicketDetails: Rendering with data:', {
     ticketId,
     ticket,
     isLoading,
     error,
-    teamName: ticket?.team?.name
+    teamName: (ticket as TicketWithRelations)?.team?.name
   });
 
   if (isLoading) {
@@ -39,49 +131,17 @@ export const TicketDetails = memo(function TicketDetails({ ticketId }: TicketDet
     return <div className="p-4">Ticket not found</div>;
   }
 
-  const formatHistoryChange = (history: TicketHistory) => {
-    switch (history.change_type) {
-      case 'status':
-        return `Status changed from ${history.old_value} to ${history.new_value}`;
-      case 'assignment':
-        return `Assigned to ${history.new_value}`;
-      case 'category':
-        return `Category updated to ${history.new_value}`;
-      case 'description':
-        return 'Description updated';
-      default:
-        return 'Unknown change';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'escalated':
-        return 'destructive';
-      case 'resolved':
-        return 'success';
-      case 'in_progress':
-        return 'progress';
-      case 'under_review':
-        return 'warning';
-      case 'closed':
-        return 'secondary';
-      case 'unassigned':
-        return 'unassigned';
-      default:
-        return 'default';
-    }
-  };
+  const ticketWithRelations = ticket as TicketWithRelations;
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
             <CardTitle>{ticket.title}</CardTitle>
             <CardDescription>Created {new Date(ticket.created_at).toLocaleString()}</CardDescription>
           </div>
-          <Badge variant={getStatusColor(ticket.status)}>
+          <Badge variant={`status-${ticket.status}`}>
             {ticket.status.replace('_', ' ')}
           </Badge>
         </CardHeader>
@@ -96,9 +156,58 @@ export const TicketDetails = memo(function TicketDetails({ ticketId }: TicketDet
 
           <div>
             <h2 className="text-lg font-semibold mb-2">Assignment</h2>
-            <div className="text-muted-foreground">
-              <p>Team: {ticket.team?.name || 'Unassigned'}</p>
-              <p>Agent: {ticket.assigned_agent?.full_name || 'Unassigned'}</p>
+            <div className="space-y-4">
+              {canReassign && !isResolved ? (
+                <>
+                  <div className="flex items-center gap-4">
+                    <p className="text-sm font-medium min-w-[3rem]">Team</p>
+                    <Select
+                      value={ticket.assigned_team_id || 'unassigned'}
+                      onValueChange={handleTeamChange}
+                    >
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Select a team" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {teams.map(team => (
+                          <SelectItem key={team.id} value={team.id}>
+                            {team.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <p className="text-sm font-medium min-w-[3rem]">Agent</p>
+                    <Select
+                      value={ticket.assigned_agent_id || 'unassigned'}
+                      onValueChange={handleAgentChange}
+                    >
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Select an agent" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {members.map(member => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-muted-foreground">
+                    Team: {ticketWithRelations.team?.name || 'Unassigned'}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Agent: {ticketWithRelations.assigned_agent?.full_name || 'Unassigned'}
+                  </p>
+                </>
+              )}
             </div>
           </div>
 
@@ -107,7 +216,7 @@ export const TicketDetails = memo(function TicketDetails({ ticketId }: TicketDet
           <div>
             <h2 className="text-lg font-semibold mb-2">Categories</h2>
             <div className="flex gap-2">
-              {(ticket.categories || []).map((category) => (
+              {(ticketWithRelations.categories || []).map((category) => (
                 <Badge 
                   key={category.category_id}
                   variant="outline"
@@ -123,7 +232,7 @@ export const TicketDetails = memo(function TicketDetails({ ticketId }: TicketDet
           <div>
             <h2 className="text-lg font-semibold mb-2">Watchers</h2>
             <div className="flex gap-2">
-              {(ticket.watchers || []).map((watcher) => (
+              {(ticketWithRelations.watchers || []).map((watcher) => (
                 <Badge 
                   key={watcher.watcher_id}
                   variant="secondary"
@@ -133,30 +242,6 @@ export const TicketDetails = memo(function TicketDetails({ ticketId }: TicketDet
               ))}
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>History</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {(ticket.history || []).map((historyItem) => (
-            <div 
-              key={historyItem.id}
-              className="flex items-start space-x-3 text-sm"
-            >
-              <div className="flex-shrink-0">
-                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                  {historyItem.changed_by.charAt(0).toUpperCase()}
-                </div>
-              </div>
-              <div>
-                <p className="text-foreground">{formatHistoryChange(historyItem)}</p>
-                <p className="text-muted-foreground">{new Date(historyItem.changed_at).toLocaleString()}</p>
-              </div>
-            </div>
-          ))}
         </CardContent>
       </Card>
     </div>

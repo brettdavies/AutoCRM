@@ -101,8 +101,8 @@ export interface UpdateTicketDTO {
   title?: string;
   description?: string;
   status?: TicketStatus;
-  assigned_agent_id?: string;
-  assigned_team_id?: string;
+  assigned_agent_id?: string | null;
+  assigned_team_id?: string | null;
 }
 
 /** Options for filtering tickets in useTickets hook */

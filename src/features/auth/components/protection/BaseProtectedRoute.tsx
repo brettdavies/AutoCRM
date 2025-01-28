@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks'
-import { UIErrorBoundary } from '@/features/error-handling/boundaries/UIErrorBoundary'
+import { UIErrorBoundary } from '@/features/error-handling/components/ErrorBoundary'
 import type { BaseProtectedRouteProps } from '@/features/auth/types/protection.types'
 
 /**

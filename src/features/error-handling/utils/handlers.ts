@@ -1,13 +1,14 @@
 import { AuthError } from '@supabase/supabase-js'
 import { 
-  BaseAuthError, 
   UIError, 
   NavigationError, 
   StateError,
   SupabaseAuthError,
   DatabaseError,
-  ErrorCode 
-} from './types'
+  ErrorCode,
+  ValidationError
+} from '../types'
+import { z } from 'zod'
 
 /**
  * @function handleSupabaseError
@@ -110,4 +111,53 @@ export function handleStateError(error: unknown, state: string): StateError {
     state,
     error
   )
+}
+
+/**
+ * @function handleValidationError
+ * @description Processes validation-related errors
+ * @param {unknown} error - Original error
+ * @param {string} field - Field that failed validation
+ * @param {unknown} value - Invalid value
+ * @returns {ValidationError} Processed error
+ */
+export function handleValidationError(
+  error: unknown,
+  field: string,
+  value: unknown
+): ValidationError {
+  // Handle Zod validation errors
+  if (error instanceof z.ZodError) {
+    const firstError = error.errors[0];
+    if (!firstError) {
+      return new ValidationError(
+        ErrorCode.INVALID_VALUE,
+        'Unknown validation error',
+        field,
+        value,
+        error
+      );
+    }
+    return new ValidationError(
+      ErrorCode.INVALID_FORMAT,
+      firstError.message,
+      field,
+      value,
+      error
+    );
+  }
+
+  // Handle business rule violations
+  if (error instanceof ValidationError) {
+    return error;
+  }
+
+  // Handle unknown validation errors
+  return new ValidationError(
+    ErrorCode.INVALID_VALUE,
+    'Validation failed',
+    field,
+    value,
+    error
+  );
 } 

@@ -1,14 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import type { AuthContextValue, AuthState, TeamContext, Profile, OAuthProvider, OAuthError } from '../types/auth.types'
-import type { ProfileRow } from '@/core/supabase/types/database.types'
+import type { AuthContextValue, AuthState, TeamContext, Profile, OAuthProvider, OAuthError, TeamRole, ProfileRow } from '../types/auth.types'
 import type { Session } from '@supabase/supabase-js'
-
-const supabase = createBrowserClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-)
+import { supabase } from '@/core/supabase/client'
 
 /**
  * @constant AuthContext
@@ -82,7 +76,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select()
         .eq('id', session.user.id)
         .single()
 
@@ -90,10 +84,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Convert database profile to domain profile
       const dbProfile = data as ProfileRow
-      return {
-        ...dbProfile,
-        team_id: session.user.user_metadata?.team_id || null
-      } satisfies Profile
+
+      // Map profile fields
+      const profile: Profile = {
+        id: dbProfile.id,
+        email: dbProfile.email,
+        full_name: dbProfile.full_name || '',
+        user_role: dbProfile.user_role,
+        created_at: dbProfile.created_at,
+        updated_at: dbProfile.updated_at,
+        last_login_at: dbProfile.last_login_at,
+        is_active: dbProfile.is_active,
+        preferences: dbProfile.preferences,
+        avatar_url: dbProfile.avatar_url || '',
+        oauth_metadata: {
+          provider: 'google',
+          provider_id: session.user.id
+        },
+        deleted_at: dbProfile.deleted_at || null
+      }
+
+      // Optional fields from user metadata
+      if (session.user.user_metadata?.oauth_provider) {
+        profile.oauth_provider = session.user.user_metadata.oauth_provider as OAuthProvider
+      }
+      if (session.user.user_metadata?.team_role) {
+        profile.team_role = session.user.user_metadata.team_role as TeamRole
+      }
+      if (session.user.user_metadata?.team_id) {
+        profile.team_id = session.user.user_metadata.team_id
+      }
+      return profile
     },
     enabled: !!session?.user?.id
   })
@@ -152,27 +173,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.log('Profile Map:', Object.fromEntries(profileMap));
 
       // Convert database profiles to domain profiles
-      const members = teamMembers.map(member => {
-        console.log('Processing member:', member);
-        const profile = profileMap.get(member.user_id);
-        console.log('Found profile:', profile);
-        if (!profile) return null;
+      const members = teamMembers
+        .map(member => {
+          const profile = profileMap.get(member.user_id);
+          if (!profile) return null;
 
-        const domainProfile = {
-          id: profile.id,
-          email: profile.email,
-          full_name: profile.full_name,
-          role: session?.user?.user_metadata?.role || 'customer',
-          created_at: profile.created_at,
-          updated_at: profile.updated_at,
-          last_login_at: profile.last_login_at,
-          is_active: profile.is_active,
-          preferences: profile.preferences,
-          team_id: teamData.id
-        } satisfies Profile;
-        console.log('Created domain profile:', domainProfile);
-        return domainProfile;
-      }).filter((member): member is Profile => member !== null);
+          return {
+            id: profile.id,
+            email: profile.email,
+            full_name: profile.full_name,
+            user_role: session?.user?.user_metadata?.role || 'customer',
+            created_at: profile.created_at,
+            updated_at: profile.updated_at,
+            last_login_at: profile.last_login_at,
+            is_active: profile.is_active,
+            preferences: profile.preferences,
+            oauth_metadata: {
+              provider: profile.oauth_provider as OAuthProvider || 'google',
+              provider_id: profile.id
+            },
+            ...(teamData.id ? { team_id: teamData.id } : {})
+          } satisfies Profile;
+        })
+        .filter((member): member is Profile => member !== null);
 
       console.log('Final members array:', members);
 
@@ -250,7 +273,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         code: 'provider_error',
         message: error instanceof Error ? error.message : 'Failed to initialize OAuth flow',
         provider,
-        originalError: error
+        originalError: error,
+        name: 'OAuthError'
       }
       setState(prev => ({ ...prev, error: oauthError }))
     }
