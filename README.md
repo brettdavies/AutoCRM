@@ -1,6 +1,8 @@
-# AutoCRM Technical Documentation  
+# AutoCRM Technical Documentation
 
-**Enterprise-Grade CRM Platform**  
+> **Project Overview:** See [PROJECT.md](PROJECT.md) for a high-level overview, achievements, and technical highlights.
+
+**Enterprise-Grade CRM Platform**
 *Combining modern web architecture with production-ready patterns for scalable customer relationship management*
 
 ## Project Overview  
